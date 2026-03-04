@@ -1,0 +1,9 @@
+Questa riga è orfana e deve finire in skipped_lines_count
+[01/02/25, 09:10] Io: Data ambigua (01/02) -> DD/MM o MM/DD?
+  questa riga inizia con spazi e deve essere multilinea
+[01/02/25, 09:11] Altro: Ok
+[02/03/25, 09:12] Io: Anche questa è ambigua (02/03)
+[02/03/25, 09:13 AM] Altro: AM/PM senza secondi
+[02/03/25, 09:13:05 AM] Io: AM/PM con secondi
+[02/03/25, 09:14] I messaggi e le chiamate sono crittografati end-to-end.
+Riga orfana finale

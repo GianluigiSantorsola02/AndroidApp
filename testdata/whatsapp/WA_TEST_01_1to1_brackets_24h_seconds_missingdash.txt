@@ -1,0 +1,9 @@
+[08/11/25, 12:51:24] Mamma: Ciao come stai
+[08/11/25, 12:51:40] Io: Bene, tu?
+[08/11/25, 12:52:01] Mamma: Tutto ok.
+[08/11/25, 12:52:10] Mamma: Ti scrivo una cosa lunga
+che continua su una seconda riga
+e anche su una terza.
+[08/11/25, 12:53:00] I messaggi e le chiamate sono crittografati end-to-end.
+[08/11/25, 12:53:12] Io: Perfetto
+[08/11/25, 12:53] Mamma: Questo ha solo hh:mm (senza secondi)

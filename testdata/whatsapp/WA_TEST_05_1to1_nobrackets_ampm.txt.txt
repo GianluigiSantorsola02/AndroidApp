@@ -1,0 +1,5 @@
+03/03/24, 12:00 AM - A: Midnight start
+03/03/24, 12:01 AM - B: After midnight
+03/03/24, 12:00 PM - A: Noon message
+03/03/24, 01:00 PM - B: Afternoon
+03/03/24, 01:01 PM - I messaggi e le chiamate sono crittografati end-to-end.

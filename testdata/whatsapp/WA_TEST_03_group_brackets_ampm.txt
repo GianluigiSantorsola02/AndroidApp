@@ -1,0 +1,8 @@
+[11/08/25, 12:01 PM] Marco: Ragazzi ci siete?
+[11/08/25, 12:02 PM] Giulia: Sì
+[11/08/25, 12:02:10 PM] Io: Arrivo tra 5 minuti
+[11/08/25, 12:03 PM] Marco: Ok
+[11/08/25, 12:03 PM] Marco: Messaggio lungo
+seconda riga
+[11/08/25, 12:04 PM] Marco ha cambiato l’immagine del gruppo.
+[11/08/25, 12:05 AM] Giulia: Questo è AM (dovrebbe diventare 00:05)

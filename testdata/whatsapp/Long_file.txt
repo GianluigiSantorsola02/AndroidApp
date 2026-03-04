@@ -1,0 +1,274 @@
+01/02/2026, 07:55 - I messaggi e le chiamate sono crittografati end-to-end. Nessuno al di fuori di questa chat può leggerli o ascoltarli.
+01/02/2026, 07:58 - Hai creato il gruppo "Progetto App"
+01/02/2026, 08:00 - Giulia ha aggiunto Luca
+01/02/2026, 08:14 - Marco: Mi stai ignorando?
+01/02/2026, 08:32 - Marco: Perfetto.
+01/02/2026, 08:49 - Marco: Se mi rispetti, mi rispondi subito.
+01/02/2026, 08:57 - Sara: Ci sei?
+01/02/2026, 09:11 - Luca: Scusa, mi sono spiegato male.
+01/02/2026, 09:14 - Sara: Snippet:
+```kotlin
+val x = 1
+println(x)
+```
+01/02/2026, 09:16 - Sara: Messaggio lunghissimo: bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla
+01/02/2026, 09:28 - Giulia: Perfetto.
+01/02/2026, 09:31 - Giulia: Messaggio lunghissimo: bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla
+01/02/2026, 09:43 - Giulia: Scusa, mi sono spiegato male.
+01/02/2026, 09:46 - Giulia: Mi stai ignorando?
+01/02/2026, 10:04 - Giulia: Sto arrivando.
+01/02/2026, 10:15 - Sara: Scusa, mi sono spiegato male.
+01/02/2026, 10:26 - Giulia: Questo messaggio è stato eliminato
+01/02/2026, 10:31 - Luca: Ok, mi sono scaldato. Scusa.
+01/02/2026, 10:45 - Sara: Email: test@example.com
+01/02/2026, 10:47 - Marco: Domani alle 10 va bene?
+01/02/2026, 10:50 - Sara: ‎image omitted
+01/02/2026, 10:51 - Marco: Posizione condivisa: https://maps.example.com/?q=45.0,9.0
+01/02/2026, 11:02 - Marco: Domani alle 10 va bene?
+01/02/2026, 11:11 - Giulia: La build di debug crasha ancora 😤
+01/02/2026, 11:28 - Giulia: Ti va di fare una call di 5 minuti?
+01/02/2026, 11:45 - Marco: ‎audio omitted
+01/02/2026, 11:55 - Giulia: Nota vocale (0:12)
+01/02/2026, 12:11 - Marco: Posizione condivisa: https://maps.example.com/?q=45.0,9.0
+01/02/2026, 12:27 - Giulia: Chiamata video persa
+01/02/2026, 12:45 - Giulia: Questo messaggio è stato eliminato
+01/02/2026, 13:00 - Sara: 😂😂😂
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+02/02/2026, 07:57 - Marco ha lasciato il gruppo
+02/02/2026, 08:18 - Marco:   (leading spaces) ok
+02/02/2026, 08:20 - Luca: Mi stai ignorando?
+02/02/2026, 08:38 - Giulia: Nota vocale (0:12)
+02/02/2026, 08:54 - Sara: La build di debug crasha ancora 😤
+02/02/2026, 09:08 - Sara: Sto arrivando.
+02/02/2026, 09:12 - Marco: Ecco la checklist:
+- parser
+- db
+- ui
+02/02/2026, 09:16 - Giulia: Posizione condivisa: https://maps.example.com/?q=45.0,9.0
+02/02/2026, 09:25 - Sara: Ti mando i file tra poco.
+02/02/2026, 09:43 - Marco: Posizione condivisa: https://maps.example.com/?q=45.0,9.0
+02/02/2026, 09:51 - Giulia: ‎video omitted
+02/02/2026, 09:53 - Giulia: Messaggio lunghissimo: bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla
+02/02/2026, 10:08 - Luca: Ti sto solo chiedendo chiarezza, non controllo.
+02/02/2026, 10:24 - Giulia: Scusa, mi sono spiegato male.
+02/02/2026, 10:42 - Marco: Sto arrivando.
+02/02/2026, 10:59 - Giulia: Sticker omitted
+02/02/2026, 11:02 - Giulia: Nota vocale (0:12)
+02/02/2026, 11:05 - Sara: Nota vocale (0:12)
+02/02/2026, 11:12 - Luca: Questo messaggio è stato eliminato
+02/02/2026, 11:27 - Luca: 
+02/02/2026, 11:31 - Marco: Sticker omitted
+02/02/2026, 11:34 - Giulia: Domani alle 10 va bene?
+03/02/2026, 08:27 - Marco: Contatto condiviso: Nome=Ciao; Tel=+39 320 000 0000
+03/02/2026, 08:32 - Luca: La build di debug crasha ancora 😤
+03/02/2026, 08:42 - Giulia: Scusa, mi sono spiegato male.
+03/02/2026, 08:59 - Sara: Sto arrivando.
+03/02/2026, 09:08 - Luca:Dev: Email: test@example.com
+03/02/2026, 09:23 - Sara: Link: https://example.com/docs?id=123&ref=whatsapp
+03/02/2026, 09:28 - Marco: Chiamata vocale persa
+03/02/2026, 09:30 - Luca: Perfetto.
+03/02/2026, 09:38 - Marco: Contatto condiviso: Nome=Ciao; Tel=+39 320 000 0000
+03/02/2026, 09:43 - Giulia: Non posso adesso, ne parliamo dopo.
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+03/02/2026, 09:54 - Sara: Ok, mi sono scaldato. Scusa.
+03/02/2026, 09:58 - Sara: ‎video omitted
+03/02/2026, 10:13 - Luca: 😂😂😂
+03/02/2026, 10:26 - Luca: Ti mando i file tra poco.
+03/02/2026, 10:43 - Sara: Posizione condivisa: https://maps.example.com/?q=45.0,9.0
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+03/02/2026, 10:52 - Giulia: Non mi piace come stai rispondendo.
+03/02/2026, 11:04 - Luca: Sticker omitted
+03/02/2026, 11:11 - Luca: 
+03/02/2026, 11:29 - Giulia: Ti mando i file tra poco.
+03/02/2026, 11:40 - Marco: Se continui così, blocco tutto.
+03/02/2026, 11:51 - Sara: Contatto condiviso: Nome=Ciao; Tel=+39 320 000 0000
+03/02/2026, 12:04 - Giulia: Se continui così, blocco tutto.
+03/02/2026, 12:06 - Hai cambiato le impostazioni dei messaggi effimeri: 7 giorni
+04/02/2026, 07:57 - Hai cambiato le impostazioni dei messaggi effimeri: 7 giorni
+04/02/2026, 08:24 - Luca: <Media omessi>
+04/02/2026, 08:30 - Marco: Oggi ho 2 problemi: 1) test 2) tempo
+04/02/2026, 08:38 - Luca: Grazie!
+04/02/2026, 08:54 - Marco:   (leading spaces) ok
+04/02/2026, 09:07 - Sara: Numero: +39 333 123 4567
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+04/02/2026, 09:11 - Sara: Perché eri online e non rispondevi?
+04/02/2026, 09:19 - Marco: ‎image omitted
+04/02/2026, 09:30 - Sara: Ti sto solo chiedendo chiarezza, non controllo.
+04/02/2026, 09:48 - Sara: Ok, mi sono scaldato. Scusa.
+04/02/2026, 09:56 - Luca: Documento omesso
+04/02/2026, 10:11 - Marco: Mi stai ignorando?
+04/02/2026, 10:29 - Marco: 😂😂😂
+04/02/2026, 10:36 - Marco: Ecco la checklist:
+- parser
+- db
+- ui
+04/02/2026, 10:50 - Marco: Hai eliminato questo messaggio
+04/02/2026, 10:51 - Sara: Snippet:
+```kotlin
+val x = 1
+println(x)
+```
+04/02/2026, 11:04 - Sara: Ok, mi sono scaldato. Scusa.
+04/02/2026, 11:12 - Sara: <Media omitted>
+04/02/2026, 11:25 - Giulia: Email: test@example.com
+04/02/2026, 11:38 - Marco: <Media omitted>
+04/02/2026, 11:40 - Luca: Scusa, mi sono spiegato male.
+04/02/2026, 11:53 - Luca: Hai eliminato questo messaggio
+05/02/2026, 08:28 - Marco: Snippet:
+```kotlin
+val x = 1
+println(x)
+```
+05/02/2026, 08:31 - Marco: Mi stai ignorando?
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+05/02/2026, 08:36 - Giulia: Oggi ho 2 problemi: 1) test 2) tempo
+05/02/2026, 08:51 - Luca: Domani alle 10 va bene?
+05/02/2026, 08:55 - Giulia: La build di debug crasha ancora 😤
+05/02/2026, 09:08 - Sara: Grazie!
+05/02/2026, 09:16 - Marco: Se continui così, blocco tutto.
+05/02/2026, 09:20 - Marco: <Media omitted>
+05/02/2026, 09:31 - Marco: ‎audio omitted
+05/02/2026, 09:46 - Giulia: Ti sto solo chiedendo chiarezza, non controllo.
+05/02/2026, 10:04 - Sara: Ti sto solo chiedendo chiarezza, non controllo.
+05/02/2026, 10:12 - Marco: <Media omessi>
+05/02/2026, 10:25 - Luca:Dev: Ok, calma. Ripartiamo dai requisiti.
+05/02/2026, 10:34 - Luca: Chiamata video persa
+05/02/2026, 10:35 - Giulia: Ti sto solo chiedendo chiarezza, non controllo.
+05/02/2026, 10:43 - Sara: ‎audio omitted
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+05/02/2026, 10:53 - Giulia: Mi stai ignorando?
+05/02/2026, 11:09 - Luca: Ok, mi sono scaldato. Scusa.
+06/02/2026, 08:19 - Luca: Link: https://example.com/docs?id=123&ref=whatsapp
+06/02/2026, 08:37 - Giulia: Ok, mi sono scaldato. Scusa.
+06/02/2026, 08:54 - Luca: Grazie!
+06/02/2026, 09:04 - Marco: Email: test@example.com
+06/02/2026, 09:22 - Luca: Email: test@example.com
+06/02/2026, 09:26 - Marco: ‎video omitted
+06/02/2026, 09:28 - Luca: ‎video omitted
+06/02/2026, 09:44 - Marco: Non voglio che tu parli con lui.
+06/02/2026, 09:54 - Marco: Link: https://example.com/docs?id=123&ref=whatsapp
+06/02/2026, 10:02 - Sara: <Media omessi>
+06/02/2026, 10:16 - Luca: Sto arrivando.
+06/02/2026, 10:23 - Giulia: Ho finito la parte di parser.
+06/02/2026, 10:26 - Sara: Perché eri online e non rispondevi?
+06/02/2026, 10:34 - Luca: Perché eri online e non rispondevi?
+06/02/2026, 10:42 - Luca:   (leading spaces) ok
+06/02/2026, 10:49 - Sara: 😂😂😂
+06/02/2026, 10:54 - Marco: Se continui così, blocco tutto.
+06/02/2026, 11:04 - Sara: Perché eri online e non rispondevi?
+06/02/2026, 11:13 - Sara: Chiamata video persa
+06/02/2026, 11:24 - Giulia: Non voglio che tu parli con lui.
+06/02/2026, 11:25 - Luca: Ti va di fare una call di 5 minuti?
+06/02/2026, 11:40 - Luca: Chiamata vocale persa
+06/02/2026, 11:43 - Sara: Ecco la checklist:
+- parser
+- db
+- ui
+06/02/2026, 11:47 - Giulia: Perché eri online e non rispondevi?
+06/02/2026, 12:00 - Marco: Ok, calma. Ripartiamo dai requisiti.
+06/02/2026, 12:02 - Hai bloccato Giulia
+07/02/2026, 07:57 - Marco ha lasciato il gruppo
+07/02/2026, 08:28 - Sara: Grazie!
+07/02/2026, 08:44 - Sara: Scusa, mi sono spiegato male.
+07/02/2026, 08:54 - Sara: ‎audio omitted
+07/02/2026, 09:02 - Giulia: Ci sei?
+07/02/2026, 09:06 - Sara: :) questa inizia con due punti
+07/02/2026, 09:16 - Luca: ‎video omitted
+07/02/2026, 09:34 - Giulia: Chiamata video persa
+07/02/2026, 09:37 - Luca: Hai eliminato questo messaggio
+07/02/2026, 09:46 - Marco: Se continui così, blocco tutto.
+07/02/2026, 10:02 - Giulia: ‎video omitted
+07/02/2026, 10:20 - Sara: Ok, calma. Ripartiamo dai requisiti.
+07/02/2026, 10:28 - Sara: Hai eliminato questo messaggio
+07/02/2026, 10:41 - Sara: :) questa inizia con due punti
+07/02/2026, 10:43 - Giulia: Chiamata vocale persa
+07/02/2026, 10:58 - Marco: ‎image omitted
+07/02/2026, 11:03 - Marco: Non mi piace come stai rispondendo.
+07/02/2026, 11:06 - Luca: Posizione condivisa: https://maps.example.com/?q=45.0,9.0
+07/02/2026, 11:22 - Marco: Mi stai ignorando?
+08/02/2026, 08:13 - Sara: Ti va di fare una call di 5 minuti?
+08/02/2026, 08:28 - Giulia: Ok 👍
+08/02/2026, 08:38 - Luca: Numero: +39 333 123 4567
+08/02/2026, 08:44 - Giulia: Messaggio inoltrato: guarda sotto
+08/02/2026, 08:52 - Sara: Numero: +39 333 123 4567
+08/02/2026, 09:07 - Luca: ‎image omitted
+08/02/2026, 09:13 - Marco: Snippet:
+```kotlin
+val x = 1
+println(x)
+```
+08/02/2026, 09:23 - Sara: ‎image omitted
+08/02/2026, 09:36 - Sara: Messaggio lunghissimo: bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla
+08/02/2026, 09:46 - Marco: Oggi ho 2 problemi: 1) test 2) tempo
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+08/02/2026, 09:48 - Sara: Basta. Stai esagerando.
+08/02/2026, 10:00 - Giulia: Messaggio inoltrato: guarda sotto
+08/02/2026, 10:05 - Marco: :) questa inizia con due punti
+08/02/2026, 10:07 - Luca: Ho finito la parte di parser.
+08/02/2026, 10:21 - Giulia: Posizione condivisa: https://maps.example.com/?q=45.0,9.0
+08/02/2026, 10:38 - Luca: Non mi piace come stai rispondendo.
+08/02/2026, 10:48 - Luca: ‎image omitted
+08/02/2026, 10:56 - Sara: Contatto condiviso: Nome=Ciao; Tel=+39 320 000 0000
+08/02/2026, 10:57 - Luca: ‎image omitted
+08/02/2026, 11:06 - Sara: Citazione:
+> "Non è difficile, è solo lungo."
+08/02/2026, 11:14 - Giulia 🌿: Ok, calma. Ripartiamo dai requisiti.
+09/02/2026, 07:57 - Luca ha cambiato l'oggetto del gruppo in "Progetto App - MVP"
+09/02/2026, 08:25 - Luca: Link: https://example.com/docs?id=123&ref=whatsapp
+09/02/2026, 08:35 - Sara: Mi stai ignorando?
+09/02/2026, 08:50 - Luca: Ok, mi sono scaldato. Scusa.
+09/02/2026, 08:55 - Sara: ‎audio omitted
+09/02/2026, 09:04 - Marco: Scusa, mi sono spiegato male.
+09/02/2026, 09:16 - Marco: Citazione:
+> "Non è difficile, è solo lungo."
+09/02/2026, 09:28 - Marco: Grazie!
+09/02/2026, 09:43 - Marco: :) questa inizia con due punti
+09/02/2026, 09:45 - Luca: Email: test@example.com
+09/02/2026, 10:03 - Giulia: 😂😂😂
+09/02/2026, 10:04 - Luca: Numero: +39 333 123 4567
+09/02/2026, 10:10 - Marco: Ok 👍
+09/02/2026, 10:18 - Luca: Sto arrivando.
+09/02/2026, 10:22 - Marco: Citazione:
+> "Non è difficile, è solo lungo."
+09/02/2026, 10:26 - Sara: Messaggio inoltrato: guarda sotto
+09/02/2026, 10:43 - Luca: Ok 👍
+09/02/2026, 10:56 - Sara: ‎audio omitted
+09/02/2026, 10:59 - Luca: Ti mando i file tra poco.
+09/02/2026, 11:17 - Luca: Chiamata video persa
+09/02/2026, 11:31 - Marco: Link: https://example.com/docs?id=123&ref=whatsapp
+09/02/2026, 11:49 - Giulia: 😂😂😂
+09/02/2026, 12:02 - Sara: Ok, calma. Ripartiamo dai requisiti.
+09/02/2026, 12:14 - Giulia: ‎video omitted
+09/02/2026, 12:17 - Sara: Ok, mi sono scaldato. Scusa.
+09/02/2026, 12:19 - Luca: Hai eliminato questo messaggio
+09/02/2026, 12:33 - Marco: Chiamata video persa
+09/02/2026, 12:50 - Giulia: ‎video omitted
+09/02/2026, 13:08 - Luca: Smettila di fare il vago.
+10/02/2026, 08:28 - Marco: Oggi ho 2 problemi: 1) test 2) tempo
+10/02/2026, 08:34 - Luca: Se continui così, blocco tutto.
+10/02/2026, 08:40 - Giulia: Questo messaggio è stato eliminato
+10/02/2026, 08:41 - Marco: Scusa, mi sono spiegato male.
+10/02/2026, 08:47 - Luca: Ok, calma. Ripartiamo dai requisiti.
+10/02/2026, 08:50 - Marco: Ti va di fare una call di 5 minuti?
+10/02/2026, 08:59 - Sara: ‎audio omitted
+10/02/2026, 09:06 - Marco: Link: https://example.com/docs?id=123&ref=whatsapp
+10/02/2026, 09:22 - Luca: Questo messaggio è stato eliminato
+10/02/2026, 09:29 - Luca: Email: test@example.com
+10/02/2026, 09:33 - Marco: <Media omitted>
+10/02/2026, 09:41 - Luca: Ok, mi sono scaldato. Scusa.
+12/02/2026, 09:00 - Qualcuno: questa riga è testo dentro un messaggio inoltrato (edge)
+10/02/2026, 09:44 - Luca: Nota vocale (0:12)
+10/02/2026, 09:54 - Marco: Ok, calma. Ripartiamo dai requisiti.
+10/02/2026, 10:09 - Luca: La build di debug crasha ancora 😤
+10/02/2026, 10:26 - Marco: Se continui così, blocco tutto.
+10/02/2026, 10:32 - Marco: Link: https://example.com/docs?id=123&ref=whatsapp
+10/02/2026, 10:44 - Luca: :) questa inizia con due punti
+10/02/2026, 10:49 - Luca: Chiamata video persa
+10/02/2026, 10:52 - Giulia:   (leading spaces) ok
+10/02/2026, 11:07 - Luca:   (leading spaces) ok
+10/02/2026, 11:23 - Sara: Smettila di fare il vago.
+10/02/2026, 11:26 - Luca: Perfetto.
+10/02/2026, 11:29 - Marco: Sticker omitted
+10/02/2026, 11:31 - Sara: Nota vocale (0:12)
+10/02/2026, 11:47 - Giulia: <Media omessi>
+10/02/2026, 11:49 - I messaggi effimeri sono attivi. I nuovi messaggi scompariranno tra 7 giorni.
