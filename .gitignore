@@ -1,23 +1,39 @@
-# IntelliJ / Android Studio
-.idea/
-*.iml
-.DS_Store
+# --- Windows ---
+Thumbs.db
+ehthumbs.db
 
-# Gradle
-.gradle/
-**/build/
+# --- VS Code / altri editor ---
+.vscode/
 
-# Local config
-local.properties
+# --- Kotlin/Java crash / profiler ---
+*.hprof
+*.jvmCrashLog
 
-# Android Studio outputs
-/captures
-.externalNativeBuild/
-.cxx/
+# --- Android build artifacts (extra sicurezza) ---
+*.apk
+*.aab
+*.ap_
+*.dex
 
-# Logs
-*.log
+# --- Python (toxic_server) ---
+toxic_server/.venv/
+toxic_server/venv/
+toxic_server/__pycache__/
+toxic_server/.pytest_cache/
+toxic_server/.mypy_cache/
+toxic_server/.ruff_cache/
+toxic_server/.cache/
+*.py[cod]
 
-# Keystores (do not commit)
-*.jks
-*.keystore
+# --- Env files (non committare segreti) ---
+.env
+.env.*
+
+# --- ONNX / ML artifacts (MAI nel repo) ---
+toxic_server/onnx_out/
+*.onnx
+*.onnx_data
+*.data
+*.safetensors
+*.pt
+*.bin
