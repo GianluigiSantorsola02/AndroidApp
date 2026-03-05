@@ -25,6 +25,7 @@ toxic_server/.ruff_cache/
 toxic_server/.cache/
 *.py[cod]
 
+
 # --- Env files (non committare segreti) ---
 .env
 .env.*
@@ -37,3 +38,11 @@ toxic_server/onnx_out/
 *.safetensors
 *.pt
 *.bin
+
+# Keystores (do not commit)
+*.jks
+*.keystore
+
+# Kotlin cache
+.kotlin/
+
