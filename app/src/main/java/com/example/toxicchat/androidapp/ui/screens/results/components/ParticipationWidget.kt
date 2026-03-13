@@ -1,22 +1,33 @@
 package com.example.toxicchat.androidapp.ui.screens.results.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.toxicchat.androidapp.domain.model.MessageEvent
 import com.example.toxicchat.androidapp.domain.model.SpeakerToxicityStat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 // --- Models ---
 
@@ -35,12 +46,18 @@ data class ParticipationUIModel(
     val rawStats: List<SpeakerToxicityStat>
 )
 
+enum class SelectedChartSource { ALL_MESSAGES, TOXIC_MESSAGES }
+
+data class SelectedParticipantState(
+    val name: String,
+    val source: SelectedChartSource
+)
+
 // --- Logic ---
 
 object ParticipationDataProcessor {
     private const val TOP_N = 3
 
-    // Colori fissi per la coerenza delle barre (IO/ALTRO o nomi)
     private val participantPalette = listOf(
         Color(0xFF42A5F5), // Blue
         Color(0xFFFFA726), // Orange
@@ -84,12 +101,10 @@ object ParticipationDataProcessor {
     ): List<BarItem> {
         if (total == 0) return emptyList()
 
-        // Prendiamo solo chi ha almeno un messaggio nel conteggio specifico
         val activeStats = stats.filter { countSelector(it) > 0 }
         
         if (activeStats.isEmpty()) return emptyList()
 
-        // Se abbiamo pochi partecipanti, mostriamoli tutti senza raggruppare in "Altri"
         if (activeStats.size <= TOP_N + 1) {
             return activeStats
                 .sortedByDescending(countSelector)
@@ -145,19 +160,28 @@ object ParticipationDataProcessor {
     }
 }
 
+// Helper per i colori di severità (identico a DynamicsTab.kt)
+private fun getSeverityColor(toxicMessages: Int, maxTox: Double?): Color = when {
+    toxicMessages <= 0 -> Color(0xFFBDBDBD)
+    (maxTox ?: 0.0) >= 0.80 -> Color(0xFFD32F2F)
+    (maxTox ?: 0.0) >= 0.50 -> Color(0xFFFFA000)
+    else -> Color(0xFFBDBDBD)
+}
+
 // --- Components ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParticipationWidget(
     stats: List<SpeakerToxicityStat>,
+    messages: List<MessageEvent> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val uiModel = remember(stats) { ParticipationDataProcessor.buildUIModel(stats) }
-    var selectedSpeakerName by remember { mutableStateOf<String?>(null) }
-    val sheetState = rememberModalBottomSheetState()
+    var selectedParticipantState by remember { mutableStateOf<SelectedParticipantState?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val selectedStat = uiModel.rawStats.find { it.speakerLabel == selectedSpeakerName }
+    val selectedStat = uiModel.rawStats.find { it.speakerLabel == selectedParticipantState?.name }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -166,7 +190,7 @@ fun ParticipationWidget(
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(
-                text = "Partecipazione per partecipante",
+                text = "Partecipazione",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -174,55 +198,238 @@ fun ParticipationWidget(
 
             Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 ParticipationSection(
-                    title = "Quota messaggi nel periodo",
+                    title = "Percentuale messaggi inviati",
                     barItems = uiModel.messageShare,
                     accentColor = ChartTheme.ALL_MESSAGES_COLOR,
-                    onBarClick = { item -> if (!item.isOthers) selectedSpeakerName = item.name }
+                    onBarClick = { item -> 
+                        if (!item.isOthers) {
+                            selectedParticipantState = SelectedParticipantState(item.name, SelectedChartSource.ALL_MESSAGES)
+                        }
+                    }
                 )
 
                 ParticipationSection(
-                    title = "Quota messaggi sopra soglia",
-                    subtitle = "Percentuali calcolate sui soli messaggi sopra soglia",
+                    title = "Percentuale messaggi critici",
+                    subtitle = "Percentuali calcolate solo sui messaggi critici",
                     barItems = uiModel.toxicShare,
                     accentColor = ChartTheme.TOXIC_MESSAGES_COLOR,
-                    onBarClick = { item -> if (!item.isOthers) selectedSpeakerName = item.name }
+                    onBarClick = { item -> 
+                        if (!item.isOthers) {
+                            selectedParticipantState = SelectedParticipantState(item.name, SelectedChartSource.TOXIC_MESSAGES)
+                        }
+                    }
                 )
             }
         }
     }
 
-    if (selectedStat != null) {
-        val totalMsgs = uiModel.rawStats.sumOf { it.totalCount }
-        val totalToxic = uiModel.rawStats.sumOf { it.toxicCount }
-
+    if (selectedStat != null && selectedParticipantState != null) {
         ModalBottomSheet(
-            onDismissRequest = { selectedSpeakerName = null },
-            sheetState = sheetState
+            onDismissRequest = { selectedParticipantState = null },
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            // Aggiunto statusBarsPadding per non coprire notch/barra stato
+            modifier = Modifier.statusBarsPadding(),
+            containerColor = Color.White
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-                    .navigationBarsPadding()
-            ) {
-                Text(
-                    text = selectedStat.speakerLabel,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+            ParticipantDetailBottomSheetContent(
+                stat = selectedStat,
+                initialSource = selectedParticipantState!!.source,
+                allMessages = messages
+            )
+        }
+    }
+}
+
+@Composable
+private fun ParticipantDetailBottomSheetContent(
+    stat: SpeakerToxicityStat,
+    initialSource: SelectedChartSource,
+    allMessages: List<MessageEvent>
+) {
+    var showOnlyToxic by remember { mutableStateOf(initialSource == SelectedChartSource.TOXIC_MESSAGES) }
+    
+    val participantMessages = remember(allMessages, stat.speakerLabel) {
+        allMessages.filter { it.speakerRaw == stat.speakerLabel }
+    }
+    
+    val filteredMessages = if (showOnlyToxic) {
+        participantMessages.filter { it.isToxic }
+    } else {
+        participantMessages
+    }
+
+    val maxToxScore = remember(participantMessages) {
+        participantMessages.maxOfOrNull { it.toxScore ?: 0.0 } ?: 0.0
+    }
+
+    val dateTimeFormatter = remember {
+        DateTimeFormatter.ofPattern("dd MMM yyyy · HH:mm", Locale.ITALY)
+            .withZone(ZoneId.systemDefault())
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            // Limitiamo l'altezza all'85% per garantire che resti un bottom sheet
+            .fillMaxHeight(0.85f)
+            .padding(horizontal = 20.dp)
+            .navigationBarsPadding()
+    ) {
+        // Header
+        Text(
+            text = stat.speakerLabel,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = if (showOnlyToxic) "Visualizzazione dei soli messaggi critici inviati nel periodo analizzato."
+                   else "Visualizzazione dei messaggi inviati nel periodo analizzato.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+        
+        Spacer(Modifier.height(20.dp))
+
+        // KPI Pills (Style from DynamicsTab DetailPills)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val critColor = getSeverityColor(stat.toxicCount, maxToxScore)
+            DetailPillInternal("Messaggi", stat.totalCount.toString(), Color.Gray)
+            DetailPillInternal("Critici", stat.toxicCount.toString(), critColor)
+            DetailPillInternal("Tossicità max", "%.2f".format(maxToxScore), critColor)
+        }
+
+        Spacer(Modifier.height(32.dp))
+
+        // Toggle Section - Matching image style
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Solo messaggi critici",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Gray,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = showOnlyToxic,
+                onCheckedChange = { showOnlyToxic = it },
+                modifier = Modifier.scale(0.8f).padding(start = 8.dp),
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF006064)
                 )
-                Spacer(Modifier.height(24.dp))
+            )
+        }
 
-                DetailRow("Messaggi totali", "${selectedStat.totalCount} / $totalMsgs", (selectedStat.totalCount.toFloat() / totalMsgs * 100).roundToInt(), ChartTheme.ALL_MESSAGES_COLOR)
-                DetailRow("Sopra soglia", "${selectedStat.toxicCount} / $totalToxic", if (totalToxic > 0) (selectedStat.toxicCount.toFloat() / totalToxic * 100).roundToInt() else 0, ChartTheme.TOXIC_MESSAGES_COLOR)
+        Spacer(Modifier.height(12.dp))
 
-                Spacer(Modifier.height(32.dp))
-                Button(
-                    onClick = { selectedSpeakerName = null },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+        // Messages List
+        if (filteredMessages.isEmpty()) {
+            Box(Modifier.weight(1f, fill = false).fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    text = if (showOnlyToxic) "Nessun messaggio critico trovato per questo partecipante." 
+                           else "Nessun messaggio disponibile per questo partecipante.",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        } else {
+            LazyColumn(
+                // weight(1f, fill = false) evita il vuoto se ci sono pochi elementi
+                modifier = Modifier.weight(1f, fill = false),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
+                items(filteredMessages, key = { it.id }) { msg ->
+                    ParticipantMessageItem(msg, dateTimeFormatter)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailPillInternal(label: String, value: String, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+    }
+}
+
+@Composable
+private fun ParticipantMessageItem(msg: MessageEvent, formatter: DateTimeFormatter) {
+    val timeStr = formatter.format(Instant.ofEpochMilli(msg.timestampEpochMillis))
+    val itemSeverityColor = getSeverityColor(if (msg.isToxic) 1 else 0, msg.toxScore)
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (msg.isToxic) itemSeverityColor.copy(alpha = 0.04f) else Color(0xFFF9F9F9)
+        ),
+        border = if (msg.isToxic) BorderStroke(1.dp, itemSeverityColor.copy(alpha = 0.1f)) else null,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = msg.speakerRaw,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (msg.isToxic) itemSeverityColor else Color(0xFF006064)
+                )
+                Spacer(Modifier.weight(1f))
+                Text(timeStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = msg.content,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 20.sp
+            )
+
+            if (msg.isToxic) {
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    color = itemSeverityColor.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp)
                 ) {
-                    Text("Chiudi")
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = itemSeverityColor,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Tossicità: %.2f".format(msg.toxScore ?: 0.0),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = itemSeverityColor
+                        )
+                    }
                 }
             }
         }
@@ -295,8 +502,8 @@ private fun BarItemView(item: BarItem, accentColor: Color, modifier: Modifier = 
         Box(
             modifier = Modifier
                 .height(barHeight.dp)
-                .fillMaxWidth(0.7f)
-                .clip(MaterialTheme.shapes.extraSmall)
+                .width(48.dp) // Risolto: larghezza fissa per evitare colonne sproporzionate
+                .clip(RoundedCornerShape(4.dp))
                 .background(if (item.isOthers) Color.LightGray else accentColor)
         )
         Spacer(Modifier.height(8.dp))
@@ -316,28 +523,4 @@ private fun BarItemView(item: BarItem, accentColor: Color, modifier: Modifier = 
     }
 }
 
-@Composable
-private fun DetailRow(label: String, value: String, pct: Int, color: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-        }
-        Surface(
-            color = color.copy(alpha = 0.1f),
-            shape = MaterialTheme.shapes.small,
-            border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
-        ) {
-            Text(
-                text = "$pct%",
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-        }
-    }
-}
+private fun Float.roundToInt() = (this + 0.5f).toInt()

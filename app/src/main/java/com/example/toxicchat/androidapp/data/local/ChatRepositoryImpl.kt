@@ -63,7 +63,6 @@ class ChatRepositoryImpl @Inject constructor(
         return messageDao.getLatestMessages(conversationId, limit).map { it.toDomain() }
     }
 
-    // Deprecato
     override suspend fun saveConversation(conversation: ConversationEntity) {
         conversationDao.insertConversation(conversation)
     }
@@ -81,7 +80,6 @@ class ChatRepositoryImpl @Inject constructor(
         messageId = messageId,
         timestampIso8601 = timestampIso8601,
         timestampEpochMillis = timestampEpochMillis,
-        speaker = speaker,
         speakerRaw = speakerRaw,
         textOriginal = textOriginal,
         source = Source.WHATSAPP_TXT,

@@ -48,7 +48,7 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController, 
-        startDestination = Screen.PinGate.route // Inizia SEMPRE dal PIN Gate
+        startDestination = Screen.PinGate.route
     ) {
         
         composable(Screen.PinGate.route) {
@@ -80,32 +80,8 @@ fun AppNavigation() {
 
         composable(Screen.Import.route) {
             ImportScreen(
-                onNavigateToIdentity = { id, name ->
-                    navController.navigate(Screen.IdentitySelection.createRoute(id, name))
-                },
                 onNavigateToImportCompleted = { id ->
                     navController.navigate("import_completed/$id")
-                }
-            )
-        }
-
-        composable(
-            route = Screen.IdentitySelection.route,
-            arguments = listOf(
-                navArgument("conversationId") { type = NavType.StringType },
-                navArgument("suggestedName") { type = NavType.StringType; nullable = true }
-            )
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("conversationId") ?: ""
-            val name = backStackEntry.arguments?.getString("suggestedName")
-            IdentitySelectionScreen(
-                conversationId = id,
-                suggestedName = name,
-                onBack = { navController.popBackStack() },
-                onFinished = {
-                    navController.navigate("import_completed/$id") {
-                        popUpTo(Screen.IdentitySelection.route) { inclusive = true }
-                    }
                 }
             )
         }
@@ -116,16 +92,6 @@ fun AppNavigation() {
                 conversationId = id,
                 onAnalyzeNow = { 
                     navController.navigate("results/$id") {
-                        popUpTo("import_completed/$id") { inclusive = true }
-                    }
-                },
-                onLater = { 
-                    navController.navigate(Screen.Chat.createRoute(id)) {
-                        popUpTo("import_completed/$id") { inclusive = true }
-                    }
-                },
-                onOpenChat = { 
-                    navController.navigate(Screen.Chat.createRoute(id)) {
                         popUpTo("import_completed/$id") { inclusive = true }
                     }
                 },
@@ -142,10 +108,7 @@ fun AppNavigation() {
             ResultsScreen(
                 conversationId = id,
                 onBack = { 
-                    navController.navigate(Screen.Chat.createRoute(id)) {
-                        popUpTo("results/$id") { inclusive = true }
-                        launchSingleTop = true
-                    }
+                    navController.popBackStack()
                 },
                 onOpenHighlighted = { /* TODO */ },
                 onExportPdf = { /* TODO */ },
@@ -154,26 +117,10 @@ fun AppNavigation() {
             )
         }
 
-        composable(
-            route = Screen.Chat.route,
-            arguments = listOf(navArgument("conversationId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
-            ChatScreen(
-                conversationId = conversationId,
-                onNavigateToResults = { id ->
-                    navController.navigate("results/$id")
-                },
-                onNavigateToPrivacy = {
-                    navController.navigate(Screen.PrivacyDetails.route)
-                }
-            )
-        }
-
         composable(Screen.Conversations.route) {
             ConversationsScreen(
-                onNavigateToChat = { id ->
-                    navController.navigate(Screen.Chat.createRoute(id))
+                onNavigateToResults = { id ->
+                    navController.navigate("results/$id")
                 },
                 onBack = { navController.popBackStack() }
             )

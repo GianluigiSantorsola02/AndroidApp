@@ -3,16 +3,9 @@ package com.example.toxicchat.androidapp.data.local
 import androidx.room.TypeConverter
 import com.example.toxicchat.androidapp.domain.model.AnalysisRangePreset
 import com.example.toxicchat.androidapp.domain.model.AnalysisStatus
-import com.example.toxicchat.androidapp.domain.model.Speaker
 import org.json.JSONArray
 
 class Converters {
-
-    @TypeConverter
-    fun fromSpeaker(value: Speaker?): String? = value?.name
-
-    @TypeConverter
-    fun toSpeaker(value: String?): Speaker? = value?.let { Speaker.valueOf(it) }
 
     @TypeConverter
     fun fromStringList(value: List<String>): String = JSONArray(value).toString()

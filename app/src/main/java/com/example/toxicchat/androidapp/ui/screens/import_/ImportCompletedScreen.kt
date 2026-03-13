@@ -23,8 +23,6 @@ import com.example.toxicchat.androidapp.ui.viewmodel.SettingsViewModel
 fun ImportCompletedScreen(
     conversationId: String,
     onAnalyzeNow: () -> Unit,
-    onLater: () -> Unit,
-    onOpenChat: () -> Unit,
     onShowPrivacy: () -> Unit,
     onBack: () -> Unit,
     settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -52,7 +50,6 @@ fun ImportCompletedScreen(
         ) {
             Spacer(modifier = Modifier.weight(1f))
 
-            // Icona e testi principali (Centrati verticalmente nel primo blocco)
             Surface(Modifier.size(100.dp), shape = CircleShape, color = Color(0xFFE0F2F1)) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF25D366), modifier = Modifier.size(56.dp))
@@ -72,35 +69,18 @@ fun ImportCompletedScreen(
 
             Spacer(Modifier.height(48.dp))
 
-            // Azioni di analisi (Blocco centrale)
             Button(
-                onClick = {
-                    onAnalyzeNow()
-                },
+                onClick = onAnalyzeNow,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006064)),
                 shape = RoundedCornerShape(28.dp)
             ) {
-                Text("Imposta analisi", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Configura analisi", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            TextButton(onClick = onLater) {
-                Text("Più tardi", color = Color.Gray, fontSize = 16.sp)
-            }
-
-            Spacer(modifier = Modifier.weight(1.2f)) // Spazio maggiore sotto per spingere "Apri chat" in fondo
-
-            // Apri chat (In fondo alla pagina)
-            TextButton(
-                onClick = { onOpenChat() },
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Text("Apri chat", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
+            Spacer(modifier = Modifier.weight(1.5f))
         }
     }
 }

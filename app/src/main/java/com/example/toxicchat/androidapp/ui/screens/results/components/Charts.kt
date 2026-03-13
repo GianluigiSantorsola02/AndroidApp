@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,17 +15,21 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.toxicchat.androidapp.domain.model.HeatmapCell
 import com.example.toxicchat.androidapp.domain.model.WeeklyPoint
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
+import java.util.Locale
+import kotlin.math.ln1p
 import kotlin.math.sqrt
-
-// --- DISTRIBUZIONE PER GIORNO CON TOGGLE ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,15 +43,17 @@ fun DistributionChart(
     val stats = remember(heatmapCells) {
         val totalByDay = LongArray(7) { 0L }
         val toxicByDay = LongArray(7) { 0L }
+
         heatmapCells.forEach {
             if (it.dayOfWeek in 1..7) {
                 totalByDay[it.dayOfWeek - 1] += it.totalCount.toLong()
                 toxicByDay[it.dayOfWeek - 1] += it.toxicCount.toLong()
             }
         }
+
         val sumTotal = totalByDay.sum().coerceAtLeast(1L)
         val sumToxic = toxicByDay.sum().coerceAtLeast(1L)
-        
+
         Pair(
             totalByDay.map { it.toDouble() / sumTotal },
             toxicByDay.map { it.toDouble() / sumToxic }
@@ -60,170 +68,485 @@ fun DistributionChart(
     Column(modifier = modifier.fillMaxWidth()) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(caption, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        
-        Spacer(Modifier.height(12.dp))
-        
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            SegmentedButton(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0; tooltipText = null },
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-            ) { Text("Tutti", style = MaterialTheme.typography.labelMedium) }
-            SegmentedButton(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1; tooltipText = null },
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-            ) { Text("Sopra soglia", style = MaterialTheme.typography.labelMedium) }
-        }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         Box(modifier = Modifier.fillMaxWidth().height(150.dp)) {
-            Canvas(modifier = Modifier.fillMaxSize().pointerInput(currentData, selectedTab) {
-                detectTapGestures { offset ->
-                    val step = size.width / 7f
-                    val index = (offset.x / step).toInt().coerceIn(0, 6)
-                    val rawCount = if (selectedTab == 0) {
-                        heatmapCells.filter { it.dayOfWeek == index + 1 }.sumOf { it.totalCount }
-                    } else {
-                        heatmapCells.filter { it.dayOfWeek == index + 1 }.sumOf { it.toxicCount }
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(currentData, selectedTab) {
+                        detectTapGestures { offset ->
+                            val step = size.width / 7f
+                            val index = (offset.x / step).toInt().coerceIn(0, 6)
+                            val rawCount = if (selectedTab == 0) {
+                                heatmapCells.filter { it.dayOfWeek == index + 1 }.sumOf { it.totalCount }
+                            } else {
+                                heatmapCells.filter { it.dayOfWeek == index + 1 }.sumOf { it.toxicCount }
+                            }
+                            tooltipText =
+                                "${ChartTheme.DAYS_OF_WEEK[index]}: ${(currentData[index] * 100).toInt()}% ($rawCount messaggi)"
+                        }
                     }
-                    tooltipText = "${ChartTheme.DAYS_OF_WEEK[index]}: ${(currentData[index] * 100).toInt()}% ($rawCount messaggi)"
-                }
-            }) {
+            ) {
                 val barWidth = size.width / 14f
                 val spacing = size.width / 14f
                 val maxVal = (currentData.maxOrNull()?.coerceAtLeast(0.1) ?: 0.1).toFloat()
-                
+
                 currentData.forEachIndexed { i, value ->
                     val x = spacing / 2f + i * (barWidth + spacing)
-                    drawRoundRect(Color(0xFFF5F5F5), Offset(x, 0f), Size(barWidth, size.height), CornerRadius(4.dp.toPx()))
+
+                    drawRoundRect(
+                        color = Color(0xFFF5F5F5),
+                        topLeft = Offset(x, 0f),
+                        size = Size(barWidth, size.height),
+                        cornerRadius = CornerRadius(4.dp.toPx())
+                    )
+
                     val h = (value.toFloat() / maxVal) * size.height
-                    drawRoundRect(currentColor, Offset(x, size.height - h), Size(barWidth, h), CornerRadius(4.dp.toPx()))
+
+                    drawRoundRect(
+                        color = currentColor,
+                        topLeft = Offset(x, size.height - h),
+                        size = Size(barWidth, h),
+                        cornerRadius = CornerRadius(4.dp.toPx())
+                    )
                 }
             }
         }
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceAround) {
-            ChartTheme.DAYS_OF_WEEK.forEach { Text(it, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Medium) }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            ChartTheme.DAYS_OF_WEEK.forEach {
+                Text(
+                    it,
+                    fontSize = 10.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
-        
+
         Spacer(Modifier.height(8.dp))
-        tooltipText?.let { 
-            Surface(color = currentColor.copy(alpha = 0.1f), shape = MaterialTheme.shapes.extraSmall) {
-                Text(it, style = MaterialTheme.typography.labelSmall, color = currentColor, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+
+        tooltipText?.let {
+            Surface(
+                color = currentColor.copy(alpha = 0.1f),
+                shape = MaterialTheme.shapes.extraSmall
+            ) {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = currentColor,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
             }
         } ?: Spacer(Modifier.height(20.dp))
     }
 }
 
-// --- TREND SETTIMANALE ---
-
-private fun formatWeekId(weekId: String): String {
-    return try {
-        val parts = weekId.split("-W")
-        val year = parts[0].toInt()
-        val week = parts[1].toInt()
-        val firstDay = LocalDate.of(year, 1, 4) // ISO standard: 4th Jan is always in Week 1
-            .with(WeekFields.ISO.weekBasedYear(), year.toLong())
-            .with(WeekFields.ISO.weekOfWeekBasedYear(), week.toLong())
-            .with(WeekFields.ISO.dayOfWeek(), 1L)
-        val lastDay = firstDay.plusDays(6)
-        val fmt = DateTimeFormatter.ofPattern("dd/MM/yy")
-        "${firstDay.format(fmt)} - ${lastDay.format(fmt)}"
-    } catch (e: Exception) {
-        weekId
+private fun formatPeriod(start: Long, end: Long, isMonthly: Boolean): String {
+    val zone = ZoneId.systemDefault()
+    return if (isMonthly) {
+        Instant.ofEpochMilli(start)
+            .atZone(zone)
+            .format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALY))
+            .replaceFirstChar { it.titlecase(Locale.ITALY) }
+    } else {
+        val formatter = DateTimeFormatter.ofPattern("dd/MM/yy", Locale.ITALY).withZone(zone)
+        val s = formatter.format(Instant.ofEpochMilli(start))
+        val e = formatter.format(Instant.ofEpochMilli(end - 1000))
+        "$s - $e"
     }
 }
 
-@Composable
-fun TrendComboChart(series: List<WeeklyPoint>, modifier: Modifier = Modifier) {
-    var tooltipText by remember { mutableStateOf<String?>(null) }
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text("Trend settimanale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("Volume messaggi e % sopra soglia", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        Spacer(Modifier.height(12.dp))
-        Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-            Canvas(modifier = Modifier.fillMaxSize().pointerInput(series) {
-                detectTapGestures { offset ->
-                    if (series.isEmpty()) return@detectTapGestures
-                    val index = (offset.x / (size.width / series.size.toFloat())).toInt().coerceIn(0, series.size - 1)
-                    val p = series[index]
-                    tooltipText = "${formatWeekId(p.weekId)}: ${(p.toxicRate * 100).toInt()}% (${p.toxicMessages}/${p.totalMessages})"
-                }
-            }) {
-                if (series.isEmpty()) return@Canvas
-                val maxVol = series.maxOf { it.totalMessages }.coerceAtLeast(1).toFloat()
-                val stepX = size.width / series.size.toFloat()
-                
-                // Volume in background (Grigio)
-                series.forEachIndexed { i, p ->
-                    val h = (p.totalMessages.toFloat() / maxVol) * size.height
-                    drawRect(Color.LightGray.copy(alpha = 0.3f), Offset(i * stepX + 2f, size.height - h), Size(stepX - 4f, h))
-                }
-                
-                // Linea Trend (ROSSO)
-                val points = series.mapIndexed { i, p -> Offset(i * stepX + stepX / 2f, size.height - (p.toxicRate.toFloat().coerceIn(0f, 1f) * size.height)) }
-                for (i in 0 until points.size - 1) {
-                    drawLine(ChartTheme.TOXIC_MESSAGES_COLOR, points[i], points[i + 1], strokeWidth = 2.dp.toPx())
-                    drawCircle(ChartTheme.TOXIC_MESSAGES_COLOR, 3.dp.toPx(), points[i])
-                }
-                if (points.isNotEmpty()) drawCircle(ChartTheme.TOXIC_MESSAGES_COLOR, 3.dp.toPx(), points.last())
-            }
-        }
-        if (series.isNotEmpty()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatWeekId(series.first().weekId), fontSize = 9.sp, color = Color.Gray)
-                Text(formatWeekId(series.last().weekId), fontSize = 9.sp, color = Color.Gray)
-            }
-        }
-        tooltipText?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = ChartTheme.TOXIC_MESSAGES_COLOR) }
+private fun formatVolumeCompact(value: Int): String {
+    return when {
+        value >= 1_000_000 -> "%.1fM".format(value / 1_000_000.0).replace(".", ",")
+        value >= 1_000 -> "%.1fk".format(value / 1_000.0).replace(".", ",")
+        else -> value.toString()
     }
 }
 
-// --- HEATMAP ---
+private data class ChartPoint(
+    val id: String,
+    val label: String,
+    val totalMessages: Int,
+    val toxicMessages: Int,
+    val toxicRate: Double,
+    val startMillis: Long,
+    val endMillis: Long
+)
 
 @Composable
-fun HeatmapGrid(cells: List<HeatmapCell>, modifier: Modifier = Modifier) {
-    var tooltipText by remember { mutableStateOf<String?>(null) }
-    val maxRate = (cells.maxOfOrNull { it.toxicRate } ?: 0.0) * 100
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f)) {
-                Text("Heatmap Giorno × Ora", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Quota sopra soglia (%)", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+fun TrendComboChart(
+    series: List<WeeklyPoint>,
+    modifier: Modifier = Modifier
+) {
+    val isMonthly = series.size > 20
+
+    val displayPoints = remember(series, isMonthly) {
+        if (!isMonthly) {
+            series.map {
+                ChartPoint(
+                    id = it.weekId,
+                    label = it.weekId,
+                    totalMessages = it.totalMessages,
+                    toxicMessages = it.toxicMessages,
+                    toxicRate = it.toxicRate,
+                    startMillis = it.startMillis,
+                    endMillis = it.endMillisExclusive
+                )
             }
-            Text("0%  · ● ⬤  ${"%.0f".format(maxRate)}%+", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+        } else {
+            series.groupBy {
+                val dt = Instant.ofEpochMilli(it.startMillis).atZone(ZoneId.systemDefault())
+                "${dt.year}-${dt.monthValue}"
+            }.map { (key, weeks) ->
+                val total = weeks.sumOf { it.totalMessages }
+                val toxic = weeks.sumOf { it.toxicMessages }
+                val start = weeks.minOf { it.startMillis }
+                val end = weeks.maxOf { it.endMillisExclusive }
+                val monthLabel = Instant.ofEpochMilli(start)
+                    .atZone(ZoneId.systemDefault())
+                    .format(DateTimeFormatter.ofPattern("MMM", Locale.ITALY))
+                    .replaceFirstChar { c -> c.lowercase(Locale.ITALY) }
+
+                ChartPoint(
+                    id = key,
+                    label = monthLabel,
+                    totalMessages = total,
+                    toxicMessages = toxic,
+                    toxicRate = if (total > 0) toxic.toDouble() / total else 0.0,
+                    startMillis = start,
+                    endMillis = end
+                )
+            }.sortedBy { it.startMillis }
         }
-        Spacer(Modifier.height(12.dp))
-        Box(modifier = Modifier.fillMaxWidth().aspectRatio(2.4f)) {
-            Canvas(modifier = Modifier.fillMaxSize().pointerInput(cells) {
-                detectTapGestures { offset ->
-                    val w = size.width / 24f
-                    val h = size.height / 7f
-                    val hour = (offset.x / w).toInt().coerceIn(0, 23)
-                    val dow = (offset.y / h).toInt() + 1
-                    cells.find { it.dayOfWeek == dow && it.hour == hour }?.let {
-                        tooltipText = "Giorno $dow ore ${it.hour}:00 — ${(it.toxicRate * 100).toInt()}%"
+    }
+
+    // Inizializzato a null per non avere nessuna colonna evidenziata all'inizio
+    var selectedPoint by remember(displayPoints) {
+        mutableStateOf<ChartPoint?>(null)
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isMonthly) "Andamento mensile" else "Andamento settimanale",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (isMonthly) {
+                        "Messaggi totali e % di messaggi tossici"
+                    } else {
+                        "Messaggi totali e % di messaggi tossici"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                LegendItem("Volume", Color.LightGray.copy(alpha = 0.6f))
+                LegendItem("% tossici", ChartTheme.TOXIC_MESSAGES_COLOR)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(displayPoints) {
+                        detectTapGestures { offset ->
+                            if (displayPoints.isEmpty()) return@detectTapGestures
+                            val stepX = size.width / displayPoints.size.toFloat()
+                            val index = (offset.x / stepX).toInt().coerceIn(0, displayPoints.size - 1)
+                            selectedPoint = displayPoints[index]
+                        }
                     }
-                }
-            }) {
-                if (cells.isEmpty()) return@Canvas
-                val w = size.width / 24f
-                val h = size.height / 7f
-                cells.forEach { c ->
-                    val alpha = if (c.toxicRate <= 0.0) 0.05f else sqrt(c.toxicRate.toFloat()).coerceIn(0.1f, 1f)
+            ) {
+                if (displayPoints.isEmpty()) return@Canvas
+
+                val maxVol = displayPoints.maxOf { it.totalMessages }.coerceAtLeast(1)
+                val logMaxVol = ln1p(maxVol.toDouble()).toFloat()
+
+                val stepX = size.width / displayPoints.size.toFloat()
+                val topPadding = 34.dp.toPx()
+                val bottomAxisPadding = 22.dp.toPx()
+                val effectiveHeight = size.height - topPadding - bottomAxisPadding
+
+                // Barre volume
+                displayPoints.forEachIndexed { i, p ->
+                    val vol = p.totalMessages
+                    val normalizedHeight = if (isMonthly) {
+                        (ln1p(vol.toDouble()).toFloat() / logMaxVol).coerceIn(0f, 1f)
+                    } else {
+                        (vol.toFloat() / maxVol.toFloat()).coerceIn(0f, 1f)
+                    }
+
+                    val h = normalizedHeight * effectiveHeight
+                    val barWidth = (stepX * 0.62f).coerceAtLeast(6.dp.toPx())
+                    val x = i * stepX + (stepX - barWidth) / 2f
+                    val y = size.height - bottomAxisPadding - h
+
+                    // Colore della colonna: se selezionata, diventa più scura (grigio scuro invece di chiaro)
+                    val isSelected = selectedPoint?.id == p.id
+                    val barColor = if (isSelected) Color.Gray.copy(alpha = 0.5f) else Color.LightGray.copy(alpha = 0.35f)
+
                     drawRoundRect(
-                        color = ChartTheme.TOXIC_MESSAGES_COLOR.copy(alpha = alpha), 
-                        topLeft = Offset(c.hour * w + 1f, (c.dayOfWeek - 1) * h + 1f), 
-                        size = Size(w - 2f, h - 2f), 
-                        cornerRadius = CornerRadius(2.dp.toPx())
+                        color = barColor,
+                        topLeft = Offset(x, y),
+                        size = Size(barWidth, h),
+                        cornerRadius = CornerRadius(3.dp.toPx())
+                    )
+                }
+
+                // Linea % tossici (sempre lineare)
+                val points = displayPoints.mapIndexed { i, p ->
+                    Offset(
+                        x = i * stepX + stepX / 2f,
+                        y = size.height - bottomAxisPadding - (p.toxicRate.toFloat().coerceIn(0f, 1f) * effectiveHeight)
+                    )
+                }
+
+                for (i in 0 until points.size - 1) {
+                    drawLine(
+                        color = ChartTheme.TOXIC_MESSAGES_COLOR,
+                        start = points[i],
+                        end = points[i + 1],
+                        strokeWidth = 2.dp.toPx()
+                    )
+                    drawCircle(
+                        color = ChartTheme.TOXIC_MESSAGES_COLOR,
+                        radius = 3.5.dp.toPx(),
+                        center = points[i]
+                    )
+                }
+
+                if (points.isNotEmpty()) {
+                    drawCircle(
+                        color = ChartTheme.TOXIC_MESSAGES_COLOR,
+                        radius = 3.5.dp.toPx(),
+                        center = points.last()
                     )
                 }
             }
+
+            // Etichette volume ancorate alle barre
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .padding(bottom = 22.dp)
+            ) {
+                val maxVol = displayPoints.maxOfOrNull { it.totalMessages }?.coerceAtLeast(1) ?: 1
+                val logMaxVol = ln1p(maxVol.toDouble()).toFloat()
+                val effectiveHeightDp = 220.dp - 34.dp - 22.dp
+
+                displayPoints.forEach { p ->
+                    val normalizedHeight = if (isMonthly) {
+                        (ln1p(p.totalMessages.toDouble()).toFloat() / logMaxVol).coerceIn(0f, 1f)
+                    } else {
+                        (p.totalMessages.toFloat() / maxVol.toFloat()).coerceIn(0f, 1f)
+                    }
+
+                    val barHeight = effectiveHeightDp * normalizedHeight
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        Text(
+                            text = if (isMonthly) formatVolumeCompact(p.totalMessages) else p.totalMessages.toString(),
+                            fontSize = 8.sp,
+                            color = Color(0xFF5F6368),
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = barHeight + 2.dp)
+                        )
+                    }
+                }
+            }
         }
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("00:00", fontSize = 9.sp, color = Color.Gray); Text("12:00", fontSize = 9.sp, color = Color.Gray); Text("23:59", fontSize = 9.sp, color = Color.Gray)
+
+        Spacer(Modifier.height(12.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFFF5F5F5),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                selectedPoint?.let { p ->
+                    Text(
+                        text = formatPeriod(p.startMillis, p.endMillis, isMonthly),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray
+                    )
+                    Text(
+                        text = "Messaggi tossici: ${p.toxicMessages} su ${p.totalMessages} (${(p.toxicRate * 100).toInt()}%)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (p.toxicRate > 0.15) ChartTheme.TOXIC_MESSAGES_COLOR else Color.Gray
+                    )
+                } ?: Text(
+                    text = if (isMonthly) {
+                        "Tocca una colonna per i dettagli del mese"
+                    } else {
+                        "Tocca una colonna per i dettagli della settimana"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
-        tooltipText?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = ChartTheme.TOXIC_MESSAGES_COLOR) }
     }
+}
+
+@Composable
+private fun LegendItem(label: String, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(Modifier.size(8.dp).background(color, CircleShape))
+        Text(label, fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+fun GlobalCriticalityHeatmap(
+    cells: List<HeatmapCell>,
+    onCellClick: (HeatmapCell) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val days = listOf("Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom")
+    val toxicColor = Color(0xFFD32F2F)
+    val baseColor = Color(0xFFF5F5F5)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Livello di criticità: ", fontSize = 10.sp, color = Color.Gray)
+            Spacer(Modifier.width(4.dp))
+            Box(Modifier.size(10.dp).background(baseColor, RoundedCornerShape(2.dp)))
+            Spacer(Modifier.width(4.dp))
+            Box(Modifier.size(10.dp).background(toxicColor.copy(alpha = 0.4f), RoundedCornerShape(2.dp)))
+            Spacer(Modifier.width(4.dp))
+            Box(Modifier.size(10.dp).background(toxicColor, RoundedCornerShape(2.dp)))
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.width(32.dp).height(160.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                days.forEach { day ->
+                    Text(
+                        text = day,
+                        fontSize = 10.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.height(20.dp),
+                        textAlign = TextAlign.Start
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(cells) {
+                                detectTapGestures { offset ->
+                                    val cellW = size.width / 24f
+                                    val cellH = size.height / 7f
+                                    val h = (offset.x / cellW).toInt().coerceIn(0, 23)
+                                    val d = (offset.y / cellH).toInt().coerceIn(0, 6)
+                                    val dayNum = d + 1
+                                    val cell = cells.find { it.dayOfWeek == dayNum && it.hour == h }
+                                        ?: HeatmapCell(dayNum, h, 0, 0, 0.0)
+                                    onCellClick(cell)
+                                }
+                            }
+                    ) {
+                        val cellW = size.width / 24f
+                        val cellH = size.height / 7f
+
+                        for (d in 0..6) {
+                            for (h in 0..23) {
+                                drawRoundRect(
+                                    color = baseColor,
+                                    topLeft = Offset(h * cellW + 1.dp.toPx(), d * cellH + 1.dp.toPx()),
+                                    size = Size(cellW - 2.dp.toPx(), cellH - 2.dp.toPx()),
+                                    cornerRadius = CornerRadius(2.dp.toPx())
+                                )
+                            }
+                        }
+
+                        cells.forEach { cell ->
+                            if (cell.dayOfWeek in 1..7 && cell.hour in 0..23 && cell.toxicRate > 0) {
+                                val alpha = sqrt(cell.toxicRate.toFloat()).coerceIn(0.15f, 1f)
+                                drawRoundRect(
+                                    color = toxicColor.copy(alpha = alpha),
+                                    topLeft = Offset(
+                                        cell.hour * cellW + 1.dp.toPx(),
+                                        (cell.dayOfWeek - 1) * cellH + 1.dp.toPx()
+                                    ),
+                                    size = Size(cellW - 2.dp.toPx(), cellH - 2.dp.toPx()),
+                                    cornerRadius = CornerRadius(2.dp.toPx())
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("00:00", fontSize = 9.sp, color = Color.Gray)
+                    Text("12:00", fontSize = 9.sp, color = Color.Gray)
+                    Text("23:59", fontSize = 9.sp, color = Color.Gray)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HeatmapGrid(
+    cells: List<HeatmapCell>,
+    onCellClick: (HeatmapCell) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    GlobalCriticalityHeatmap(
+        cells = cells,
+        onCellClick = onCellClick,
+        modifier = modifier
+    )
 }

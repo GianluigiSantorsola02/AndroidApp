@@ -15,7 +15,7 @@ import androidx.room.TypeConverters
         ResponseStatsEntity::class,
         SpeakerStatEntity::class
     ],
-    version = 10,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

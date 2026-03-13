@@ -6,7 +6,6 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.toxicchat.androidapp.domain.model.AnalysisRangePreset
 import com.example.toxicchat.androidapp.domain.model.AnalysisStatus
-import com.example.toxicchat.androidapp.domain.model.Speaker
 
 @Entity(tableName = "conversations")
 data class ConversationEntity(
@@ -21,9 +20,6 @@ data class ConversationEntity(
     val skippedLinesCount: Int,
     val invalidDatesCount: Int,
     val examplesSkippedLines: List<String>,
-    val selectedSelfName: String? = null,
-    val selfAliases: List<String> = emptyList(),
-    val isGroup: Boolean = false,
 
     // --- ANALYSIS (MVP v1.1) ---
     val analysisStatus: AnalysisStatus = AnalysisStatus.NON_ANALIZZATA,
@@ -61,7 +57,6 @@ data class MessageEntity(
     val messageId: Long,
     val timestampIso8601: String,
     val timestampEpochMillis: Long,
-    val speaker: Speaker?,
     val speakerRaw: String?,
     val textOriginal: String,
     val isSystem: Boolean,

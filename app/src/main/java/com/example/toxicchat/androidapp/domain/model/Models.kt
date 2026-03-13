@@ -7,7 +7,6 @@ data class MessageRecord(
     val messageId: Long,
     val timestampIso8601: String,
     val timestampEpochMillis: Long,
-    val speaker: Speaker?,
     val speakerRaw: String?,
     val textOriginal: String,
     val source: Source,
@@ -37,7 +36,6 @@ fun MessageRecord.toEntity(): MessageEntity {
         messageId = messageId,
         timestampIso8601 = timestampIso8601,
         timestampEpochMillis = timestampEpochMillis,
-        speaker = speaker,
         speakerRaw = speakerRaw,
         textOriginal = textOriginal,
         isSystem = isSystem,
@@ -45,11 +43,4 @@ fun MessageRecord.toEntity(): MessageEntity {
         isToxic = isToxic,
         modelVersion = null
     )
-}
-
-fun MessageRecord.isSelf(selectedSelfName: String?, aliases: List<String>): Boolean {
-    if (isSystem || speakerRaw == null) return false
-    val normalizedSpeaker = speakerRaw.trim().lowercase()
-    if (selectedSelfName?.trim()?.lowercase() == normalizedSpeaker) return true
-    return aliases.any { it.trim().lowercase() == normalizedSpeaker }
 }

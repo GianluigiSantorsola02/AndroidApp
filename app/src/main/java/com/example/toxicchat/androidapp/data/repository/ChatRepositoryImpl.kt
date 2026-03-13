@@ -85,7 +85,6 @@ class ChatRepositoryImpl @Inject constructor(
         messageId = messageId,
         timestampIso8601 = timestampIso8601,
         timestampEpochMillis = timestampEpochMillis,
-        speaker = speaker,
         speakerRaw = speakerRaw,
         textOriginal = textOriginal,
         source = Source.WHATSAPP_TXT,

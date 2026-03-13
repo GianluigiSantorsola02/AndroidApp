@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.navigation.compose)
     implementation("androidx.browser:browser:1.8.0")
+    implementation(libs.androidx.compose.foundation)
     coreLibraryDesugaring(libs.android.desugarJdkLibs)
 
     // DataStore

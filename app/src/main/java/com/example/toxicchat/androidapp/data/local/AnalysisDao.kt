@@ -111,19 +111,6 @@ interface AnalysisDao {
     @Query("DELETE FROM response_stats WHERE conversationId = :conversationId")
     suspend fun deleteResponseStats(conversationId: String)
 
-    @Query("""
-    SELECT id, timestampEpochMillis, speakerRaw, toxScore, isToxic
-    FROM messages
-    WHERE conversationId = :id
-      AND timestampEpochMillis BETWEEN :startMillis AND :endMillis
-    ORDER BY timestampEpochMillis ASC
-    """)
-    suspend fun getMessagesLiteInRange(
-        id: String,
-        startMillis: Long,
-        endMillis: Long
-    ): List<MessageLiteProjection>
-
     @Transaction
     suspend fun replaceAllAggregates(
         conversationId: String,
@@ -209,7 +196,7 @@ interface AnalysisDao {
     data class ToxicityUpdate(val id: Long, val score: Double, val isToxic: Boolean, val version: String)
 
     @Query("""
-        SELECT id, timestampEpochMillis, speakerRaw, toxScore, isToxic
+        SELECT id, timestampEpochMillis, speakerRaw, textOriginal AS content, toxScore, isToxic
         FROM messages
         WHERE conversationId = :id
           AND timestampEpochMillis BETWEEN :startMillis AND :endMillis
@@ -221,10 +208,48 @@ interface AnalysisDao {
         endMillis: Long
     ): Flow<List<MessageLiteProjection>>
 
+    @Query("""
+        SELECT id, timestampEpochMillis, speakerRaw, textOriginal AS content, toxScore, isToxic
+        FROM messages
+        WHERE conversationId = :id
+          AND timestampEpochMillis BETWEEN :startMillis AND :endMillis
+        ORDER BY timestampEpochMillis ASC
+    """)
+    suspend fun getMessagesLiteInRange(
+        id: String,
+        startMillis: Long,
+        endMillis: Long
+    ): List<MessageLiteProjection>
+
+    @Query("""
+        SELECT id, timestampEpochMillis, speakerRaw, textOriginal AS content, toxScore, isToxic
+        FROM messages
+        WHERE conversationId = :id
+          AND timestampEpochMillis BETWEEN :startMillis AND :endMillis
+          AND CAST(strftime('%w', timestampEpochMillis / 1000, 'unixepoch', 'localtime') AS INTEGER) = :dayOfWeekSql
+          AND CAST(strftime('%H', timestampEpochMillis / 1000, 'unixepoch', 'localtime') AS INTEGER) = :hour
+        ORDER BY timestampEpochMillis ASC
+    """)
+    fun getMessagesByPatternFlow(
+        id: String,
+        startMillis: Long,
+        endMillis: Long,
+        dayOfWeekSql: Int, // 0=Sun, 1=Mon, ..., 6=Sat
+        hour: Int
+    ): Flow<List<MessageLiteProjection>>
+
+    @Query("""
+    SELECT * FROM weekly_points
+    WHERE conversationId = :conversationId
+    ORDER BY weekId ASC
+""")
+    suspend fun getWeeklyPointsOnce(conversationId: String): List<WeeklyPointEntity>
+
     data class MessageLiteProjection(
         val id: Long,
         val timestampEpochMillis: Long,
         val speakerRaw: String?,
+        val content: String?,
         val toxScore: Double?,
         val isToxic: Boolean?
     )

@@ -3,18 +3,15 @@ package com.example.toxicchat.androidapp.data.repository
 import android.util.Log
 import com.example.toxicchat.androidapp.data.local.AnalysisDao
 import com.example.toxicchat.androidapp.data.local.ConversationDao
-import com.example.toxicchat.androidapp.domain.model.AnalysisMetadata
-import com.example.toxicchat.androidapp.domain.model.AnalysisRangePreset
-import com.example.toxicchat.androidapp.domain.model.AnalysisResult
-import com.example.toxicchat.androidapp.domain.model.AnalysisStatus
-import com.example.toxicchat.androidapp.domain.model.HeatmapCell
-import com.example.toxicchat.androidapp.domain.model.ResponseTimeStats
-import com.example.toxicchat.androidapp.domain.model.SpeakerToxicityStat
-import com.example.toxicchat.androidapp.domain.model.WeeklyPoint
+import com.example.toxicchat.androidapp.data.local.WeeklyPointEntity
+import com.example.toxicchat.androidapp.domain.model.*
 import com.example.toxicchat.androidapp.domain.repository.AnalysisRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.IsoFields
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,19 +25,26 @@ class AnalysisRepositoryImpl @Inject constructor(
         val metaFlow = analysisDao.getAnalysisMetadataFlow(conversationId)
 
         val weeklyFlow = analysisDao.getWeeklyPointsFlow(conversationId).map { entities ->
-            entities.map { WeeklyPoint(it.weekId, it.totalMessages, it.toxicMessages, it.toxicRate) }
+
+
+            entities.map {
+                val (start, end) = parseWeekId(it.weekId)
+                WeeklyPoint(
+                    weekId = it.weekId, 
+                    totalMessages = it.totalMessages, 
+                    toxicMessages = it.toxicMessages, 
+                    toxicRate = it.toxicRate, 
+                    startMillis = start, 
+                    endMillisExclusive = end,
+                    maxToxScore = it.maxToxScore
+                ) 
+            }
         }
 
         val heatmapFlow = analysisDao.getHeatmapCellsFlow(conversationId)
             .map { entities ->
                 entities.map { e ->
-                    HeatmapCell(
-                        e.dayOfWeek,
-                        e.hour,
-                        e.totalCount,
-                        e.toxicCount,
-                        e.toxicRate
-                    )
+                    HeatmapCell(e.dayOfWeek, e.hour, e.totalCount, e.toxicCount, e.toxicRate)
                 }
             }
 
@@ -60,6 +64,7 @@ class AnalysisRepositoryImpl @Inject constructor(
             .map { entities ->
                 entities.map {
                     SpeakerToxicityStat(
+                        speakerKey = it.speakerKey,
                         speakerLabel = it.speakerLabel,
                         totalCount = it.totalCount,
                         toxicCount = it.toxicCount,
@@ -79,15 +84,7 @@ class AnalysisRepositoryImpl @Inject constructor(
             if (metaFields == null) {
                 return@combine AnalysisResult(
                     status = AnalysisStatus.ERRORE,
-                    metadata = AnalysisMetadata(
-                        analyzedCount = 0,
-                        totalCount = 0,
-                        rangePreset = null,
-                        rangeStartMillis = null,
-                        rangeEndMillis = null,
-                        lastAnalyzedAtIso = null,
-                        modelVersion = null
-                    ),
+                    metadata = AnalysisMetadata(),
                     weeklySeries = emptyList(),
                     heatmap = emptyList(),
                     responseStats = null,
@@ -113,6 +110,23 @@ class AnalysisRepositoryImpl @Inject constructor(
                 responseStats = response,
                 speakerStats = speakerStats
             )
+        }
+    }
+
+    private fun parseWeekId(weekId: String): Pair<Long, Long> {
+        return try {
+            val parts = weekId.split("-W")
+            val year = parts[0].toInt()
+            val week = parts[1].toInt()
+            val date = LocalDate.now()
+                .withYear(year)
+                .with(IsoFields.WEEK_OF_WEEK_BASED_YEAR, week.toLong())
+                .with(java.time.DayOfWeek.MONDAY)
+            val start = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val end = date.plusDays(7).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            start to end
+        } catch (e: Exception) {
+            0L to 0L
         }
     }
 
@@ -164,15 +178,18 @@ class AnalysisRepositoryImpl @Inject constructor(
         conversationId: String,
         weekly: List<WeeklyPoint>,
         heatmap: List<HeatmapCell>,
-        response: ResponseTimeStats?
+        response: ResponseTimeStats?,
+        speakerStats: List<SpeakerToxicityStat>
     ) {
+
         val weeklyEntities = weekly.map {
-            com.example.toxicchat.androidapp.data.local.WeeklyPointEntity(
+            WeeklyPointEntity(
                 conversationId = conversationId,
                 weekId = it.weekId,
                 totalMessages = it.totalMessages,
                 toxicMessages = it.toxicMessages,
-                toxicRate = it.toxicRate
+                toxicRate = it.toxicRate,
+                maxToxScore = it.maxToxScore ?: 0.0
             )
         }
 
@@ -181,6 +198,17 @@ class AnalysisRepositoryImpl @Inject constructor(
                 conversationId = conversationId,
                 dayOfWeek = it.dayOfWeek,
                 hour = it.hour,
+                totalCount = it.totalCount,
+                toxicCount = it.toxicCount,
+                toxicRate = it.toxicRate
+            )
+        }
+
+        val speakerEntities = speakerStats.map {
+            com.example.toxicchat.androidapp.data.local.SpeakerStatEntity(
+                conversationId = conversationId,
+                speakerKey = it.speakerKey,
+                speakerLabel = it.speakerLabel,
                 totalCount = it.totalCount,
                 toxicCount = it.toxicCount,
                 toxicRate = it.toxicRate
@@ -202,8 +230,10 @@ class AnalysisRepositoryImpl @Inject constructor(
             weeklyPoints = weeklyEntities,
             heatmapCells = heatmapEntities,
             response = responseEntity,
-            speakerStats = emptyList()
+            speakerStats = speakerEntities
         )
+        val saved = analysisDao.getWeeklyPointsOnce(conversationId)
+
     }
 
     override suspend fun getCurrentRange(conversationId: String): Triple<AnalysisRangePreset, Long?, Long?>? {
@@ -218,5 +248,66 @@ class AnalysisRepositoryImpl @Inject constructor(
 
     override suspend fun countAnalyzedMessagesInRange(conversationId: String, startMillis: Long, endMillis: Long): Int {
         return analysisDao.countAnalyzedMessagesInRange(conversationId, startMillis, endMillis)
+    }
+
+    override fun getMessageEventsInRangeFlow(
+        conversationId: String,
+        startMillis: Long,
+        endMillis: Long
+    ): Flow<List<MessageEvent>> {
+        return analysisDao.getMessagesLiteInRangeFlow(conversationId, startMillis, endMillis)
+            .map { rows ->
+                rows.map { row ->
+                    MessageEvent(
+                        id = row.id,
+                        timestampEpochMillis = row.timestampEpochMillis,
+                        speakerRaw = row.speakerRaw ?: "Sconosciuto",
+                        content = row.content ?: "",
+                        toxScore = row.toxScore,
+                        isToxic = row.isToxic ?: false
+                    )
+                }
+            }
+    }
+
+    override suspend fun getMessageEventsInRange(
+        conversationId: String,
+        startMillis: Long,
+        endMillis: Long
+    ): List<MessageEvent> {
+        return analysisDao.getMessagesLiteInRange(conversationId, startMillis, endMillis)
+            .map { row ->
+                MessageEvent(
+                    id = row.id,
+                    timestampEpochMillis = row.timestampEpochMillis,
+                    speakerRaw = row.speakerRaw ?: "Sconosciuto",
+                    content = row.content ?: "",
+                    toxScore = row.toxScore,
+                    isToxic = row.isToxic ?: false
+                )
+            }
+    }
+
+    override fun getMessagesByPatternFlow(
+        conversationId: String,
+        startMillis: Long,
+        endMillis: Long,
+        dayOfWeek: Int,
+        hour: Int
+    ): Flow<List<MessageEvent>> {
+        val dayOfWeekSql = if (dayOfWeek == 7) 0 else dayOfWeek
+        return analysisDao.getMessagesByPatternFlow(conversationId, startMillis, endMillis, dayOfWeekSql, hour)
+            .map { rows ->
+                rows.map { row ->
+                    MessageEvent(
+                        id = row.id,
+                        timestampEpochMillis = row.timestampEpochMillis,
+                        speakerRaw = row.speakerRaw ?: "Sconosciuto",
+                        content = row.content ?: "",
+                        toxScore = row.toxScore,
+                        isToxic = row.isToxic ?: false
+                    )
+                }
+            }
     }
 }

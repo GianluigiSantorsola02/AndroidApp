@@ -13,7 +13,8 @@ interface AnalysisRepository {
         conversationId: String,
         weekly: List<WeeklyPoint>,
         heatmap: List<HeatmapCell>,
-        response: ResponseTimeStats?
+        response: ResponseTimeStats?,
+        speakerStats: List<SpeakerToxicityStat>
     )
 
     suspend fun clearAggregates(conversationId: String)
@@ -26,4 +27,24 @@ interface AnalysisRepository {
 
     suspend fun countTotalMessagesInRange(conversationId: String, startMillis: Long, endMillis: Long): Int
     suspend fun countAnalyzedMessagesInRange(conversationId: String, startMillis: Long, endMillis: Long): Int
+    
+    fun getMessageEventsInRangeFlow(
+        conversationId: String,
+        startMillis: Long,
+        endMillis: Long
+    ): Flow<List<MessageEvent>>
+
+    suspend fun getMessageEventsInRange(
+        conversationId: String,
+        startMillis: Long,
+        endMillis: Long
+    ): List<MessageEvent>
+
+    fun getMessagesByPatternFlow(
+        conversationId: String,
+        startMillis: Long,
+        endMillis: Long,
+        dayOfWeek: Int,
+        hour: Int
+    ): Flow<List<MessageEvent>>
 }

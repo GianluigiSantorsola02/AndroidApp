@@ -43,7 +43,6 @@ import com.example.toxicchat.androidapp.ui.viewmodel.ImportViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportScreen(
-    onNavigateToIdentity: (String, String?) -> Unit,
     onNavigateToImportCompleted: (String) -> Unit,
     viewModel: ImportViewModel = hiltViewModel()
 ) {
@@ -97,12 +96,10 @@ fun ImportScreen(
                         targetState = currentSubScreen,
                         transitionSpec = {
                             if (targetState != "source") {
-                                // Avanti: slide da destra (come navigazione standard)
                                 (slideInHorizontally { it } + fadeIn(tween(300))).togetherWith(
                                     slideOutHorizontally { -it / 2 } + fadeOut(tween(300))
                                 )
                             } else {
-                                // Indietro: slide da sinistra
                                 (slideInHorizontally { -it / 2 } + fadeIn(tween(300))).togetherWith(
                                     slideOutHorizontally { it } + fadeOut(tween(300))
                                 )
@@ -135,12 +132,6 @@ fun ImportScreen(
                     DateFormatContent(
                         onChoice = { viewModel.onDateOrderSelected(state.uri, state.fileName, it) }
                     )
-                }
-                is ImportState.NeedsSelfIdentityChoice -> {
-                    LaunchedEffect(state.conversationId) {
-                        onNavigateToIdentity(state.conversationId, null)
-                        viewModel.reset()
-                    }
                 }
                 is ImportState.Imported -> {
                     LaunchedEffect(state.conversationId) {
@@ -475,52 +466,6 @@ private fun DateOption(title: String, example: String, isSelected: Boolean, onSe
             }
             RadioButton(selected = isSelected, onClick = onSelect, colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF006064)))
         }
-    }
-}
-
-@Composable
-private fun ImportCompletedContent(metadata: com.example.toxicchat.androidapp.domain.model.ImportMetadata, onOpenChat: () -> Unit, onRestart: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.height(64.dp))
-        Surface(Modifier.size(120.dp), shape = CircleShape, color = Color(0xFFE0F2F1)) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF25D366), modifier = Modifier.size(64.dp))
-            }
-        }
-        Spacer(Modifier.height(32.dp))
-        Text("Import completato", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("La chat è stata analizzata con successo.", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
-        
-        Spacer(Modifier.height(32.dp))
-        Surface(
-            modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFFF5F5F5)
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Dettagli import", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
-                }
-                AnimatedVisibility(visible = expanded) {
-                    Column(Modifier.padding(top = 12.dp)) {
-                        Text("Formato: ${metadata.dateOrderUsed}")
-                        Text("Messaggi: ${metadata.parsedMessagesCount}")
-                        Text("Sistema: ${metadata.systemMessagesCount}")
-                        Text("Multiline: ${metadata.multilineAppendsCount}")
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.weight(1f))
-        TextButton(onClick = onOpenChat) { Text("Apri chat", fontSize = 18.sp, color = Color.Black) }
-        Row(Modifier.clickable { onRestart() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Refresh, null, tint = Color.Gray, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Ricomincia", color = Color.Gray)
-        }
-        Spacer(Modifier.height(16.dp))
     }
 }
 

@@ -22,7 +22,8 @@ data class WeeklyPointEntity(
     val weekId: String,
     val totalMessages: Int,
     val toxicMessages: Int,
-    val toxicRate: Double
+    val toxicRate: Double,
+    val maxToxScore: Double? = 0.0
 )
 
 @Entity(

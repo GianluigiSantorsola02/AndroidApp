@@ -1,11 +1,11 @@
 package com.example.toxicchat.androidapp.domain.analyzer
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.toxicchat.androidapp.data.local.AnalysisDao
-import com.example.toxicchat.androidapp.data.local.ConversationDao
+import com.example.toxicchat.androidapp.data.local.*
 import com.example.toxicchat.androidapp.data.remote.MODEL_VERSION
 import com.example.toxicchat.androidapp.data.remote.ScoreItemDto
 import com.example.toxicchat.androidapp.data.remote.ToxicityApi
@@ -57,7 +57,6 @@ class ToxicityWorker @AssistedInject constructor(
         try {
             analysisDao.updateStatus(convId, AnalysisStatus.IN_CORSO)
 
-            // Initial metadata update
             updateMetadataThrottled(convId, analyzedSoFar, totalInRange, lastModelVersion, start, end, preset, force = true)
 
             while (true) {
@@ -112,23 +111,68 @@ class ToxicityWorker @AssistedInject constructor(
                 }
             }
 
-            // Final aggregates and cleanup
             val lite = analysisDao.getMessagesLiteInRange(convId, start, end).map {
                 MessageLite(it.id, it.timestampEpochMillis, it.speakerRaw, it.toxScore, it.isToxic)
             }
 
             if (lite.isNotEmpty()) {
-                val convNow = conversationDao.getConversationById(convId)
-                val isGroup = convNow?.isGroup ?: conv.isGroup
-                val selfName = convNow?.selectedSelfName ?: conv.selectedSelfName
-                val aliases = convNow?.selfAliases ?: conv.selfAliases
+                val isGroup = false // Default or compute if needed, but not from removed field
 
                 val weekly = StatisticsEngine.computeWeeklySeries(convId, lite)
                 val heatmap = StatisticsEngine.computeHeatmap(convId, lite)
-                val response = StatisticsEngine.computeResponseStats(convId, lite, isGroup, selfName, aliases)
-                val speakerStats = StatisticsEngine.computeSpeakerStats(convId, lite, isGroup, selfName, aliases)
+                val response = StatisticsEngine.computeResponseStats(convId, lite, isGroup)
+                val speakerStats = StatisticsEngine.computeSpeakerStats(convId, lite, isGroup)
 
-                analysisDao.replaceAllAggregates(convId, weekly, heatmap, response, speakerStats)
+                val weeklyEntities = weekly.map {
+                    WeeklyPointEntity(
+                        conversationId = convId,
+                        weekId = it.weekId,
+                        totalMessages = it.totalMessages,
+                        toxicMessages = it.toxicMessages,
+                        toxicRate = it.toxicRate,
+                        maxToxScore = it.maxToxScore
+                    )
+                }
+
+                val heatmapEntities = heatmap.map {
+                    HeatmapCellEntity(
+                        conversationId = convId,
+                        dayOfWeek = it.dayOfWeek,
+                        hour = it.hour,
+                        totalCount = it.totalCount,
+                        toxicCount = it.toxicCount,
+                        toxicRate = it.toxicRate
+                    )
+                }
+
+                val speakerEntities = speakerStats.map {
+                    SpeakerStatEntity(
+                        conversationId = convId,
+                        speakerKey = it.speakerKey,
+                        speakerLabel = it.speakerLabel,
+                        totalCount = it.totalCount,
+                        toxicCount = it.toxicCount,
+                        toxicRate = it.toxicRate
+                    )
+                }
+
+                val responseEntity = response?.let {
+                    ResponseStatsEntity(
+                        conversationId = convId,
+                        medianSelfToOtherMin = it.medianSelfToOtherMin,
+                        medianOtherToSelfMin = it.medianOtherToSelfMin,
+                        meanSelfToOtherMin = it.meanSelfToOtherMin,
+                        meanOtherToSelfMin = it.meanOtherToSelfMin
+                    )
+                }
+
+                analysisDao.replaceAllAggregates(
+                    conversationId = convId,
+                    weeklyPoints = weeklyEntities,
+                    heatmapCells = heatmapEntities,
+                    response = responseEntity,
+                    speakerStats = speakerEntities
+                )
             }
 
             updateMetadataThrottled(convId, analyzedSoFar, totalInRange, lastModelVersion, start, end, preset, force = true)

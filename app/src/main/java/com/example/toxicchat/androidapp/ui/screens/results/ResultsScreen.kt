@@ -22,7 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.toxicchat.androidapp.domain.model.AnalysisRangePreset
 import com.example.toxicchat.androidapp.domain.model.AnalysisStatus
 import com.example.toxicchat.androidapp.ui.components.ServerAnalysisConsentDialog
-import com.example.toxicchat.androidapp.ui.screens.results.tabs.AdvancedTab
+import com.example.toxicchat.androidapp.ui.screens.results.tabs.DynamicsTab
+import com.example.toxicchat.androidapp.ui.screens.results.tabs.ParticipantsTab
 import com.example.toxicchat.androidapp.ui.screens.results.tabs.SummaryTab
 import com.example.toxicchat.androidapp.ui.viewmodel.AnalysisViewModel
 import com.example.toxicchat.androidapp.util.ReportPrivacyMode
@@ -42,6 +43,12 @@ fun ResultsScreen(
     val conversation by viewModel.conversation.collectAsState()
     val exportUri by viewModel.exportUri.collectAsState()
     val context = LocalContext.current
+
+    // Dynamics State Collection
+    val selectedWeek by viewModel.selectedWeek.collectAsState()
+    val selectedWeekEvents by viewModel.selectedWeekEvents.collectAsState()
+    val selectedWeekDayStats by viewModel.selectedWeekDayStats.collectAsState()
+    val selectedDayStartMillis by viewModel.selectedDayStartMillis.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var showMenu by remember { mutableStateOf(false) }
@@ -93,19 +100,6 @@ fun ResultsScreen(
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Altro")
                         }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Intervallo analisi...") },
-                                leadingIcon = { Icon(Icons.Default.DateRange, null) },
-                                onClick = {
-                                    showMenu = false
-                                    showRangeSheet = true
-                                }
-                            )
-                        }
                     }
                 }
             )
@@ -130,7 +124,12 @@ fun ResultsScreen(
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Avanzato") }
+                        text = { Text("Dettagli") }
+                    )
+                    Tab(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        text = { Text("Partecipanti") }
                     )
                 }
             }
@@ -189,14 +188,22 @@ fun ResultsScreen(
                         )
 
                         AnalysisStatus.ANALIZZATA -> {
-                            if (selectedTab == 0) {
-                                SummaryTab(
+                            when (selectedTab) {
+                                0 -> SummaryTab(
                                     result = result,
                                     onOpenHighlighted = onOpenHighlighted,
                                     onExportPdf = { showExportDialog = true }
                                 )
-                            } else {
-                                AdvancedTab(
+                                1 -> DynamicsTab(
+                                    result = result,
+                                    selectedWeek = selectedWeek,
+                                    selectedWeekEvents = selectedWeekEvents,
+                                    selectedWeekDayStats = selectedWeekDayStats,
+                                    selectedDayStartMillis = selectedDayStartMillis,
+                                    onSelectWeek = { viewModel.selectWeek(it) },
+                                    onSelectDay = { viewModel.selectDay(it) }
+                                )
+                                2 -> ParticipantsTab(
                                     result = result,
                                     conversationId = conversationId,
                                     chatTitle = conversation?.title ?: "Chat"
@@ -250,7 +257,7 @@ fun ResultsScreen(
     if (showExportDialog) {
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
-            title = { Text("Esporta Report PDF") },
+            title = { Text("Genera Report PDF") },
             text = { Text("Il report verrà salvato nella cartella Download del tuo telefono. Scegli la modalità dei nomi:") },
             confirmButton = {
                 TextButton(onClick = {

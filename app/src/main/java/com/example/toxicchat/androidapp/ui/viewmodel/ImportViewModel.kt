@@ -22,16 +22,8 @@ import java.util.UUID
 import javax.inject.Inject
 
 sealed class ImportState {
-    open val suggestedName: String? = null
-
     object Idle : ImportState()
     data class NeedsDateOrderChoice(val uri: Uri, val fileName: String) : ImportState()
-    data class NeedsSelfIdentityChoice(
-        val conversationId: String,
-        val participants: List<String>,
-        override val suggestedName: String? = null
-    ) : ImportState()
-
     object Importing : ImportState()
     data class Imported(val conversationId: String, val metadata: ImportMetadata) : ImportState()
     data class Error(val message: String) : ImportState()
@@ -123,24 +115,13 @@ class ImportViewModel @Inject constructor(
             multilineAppendsCount = metadata.multilineAppendsCount,
             skippedLinesCount = metadata.skippedLinesCount,
             invalidDatesCount = metadata.invalidDatesCount,
-            examplesSkippedLines = metadata.examplesSkippedLines,
-            selectedSelfName = null,
-            selfAliases = emptyList(),
-            isGroup = false
+            examplesSkippedLines = metadata.examplesSkippedLines
         )
 
         repository.insertConversation(conversation)
         repository.insertMessagesBatch(messages)
 
-        val participants = messages
-            .asSequence()
-            .filter { !it.isSystem }
-            .mapNotNull { it.speakerRaw?.trim() }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .toList()
-
-        _uiState.value = ImportState.NeedsSelfIdentityChoice(conversationId, participants)
+        _uiState.value = ImportState.Imported(conversationId, metadata)
     }
 
     fun reset() {

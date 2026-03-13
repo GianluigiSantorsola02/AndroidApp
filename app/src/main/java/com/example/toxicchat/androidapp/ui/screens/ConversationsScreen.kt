@@ -17,7 +17,7 @@ import com.example.toxicchat.androidapp.ui.viewmodel.ConversationsViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationsScreen(
-    onNavigateToChat: (String) -> Unit,
+    onNavigateToResults: (String) -> Unit,
     onBack: () -> Unit,
     viewModel: ConversationsViewModel = hiltViewModel()
 ) {
@@ -39,8 +39,8 @@ fun ConversationsScreen(
             items(list) { conv ->
                 ListItem(
                     headlineContent = { Text(conv.title) },
-                    supportingContent = { Text("Msg: ${conv.parsedMessagesCount} (System: ${conv.systemMessagesCount}) - ${conv.createdAt}") },
-                    modifier = Modifier.clickable { onNavigateToChat(conv.id) }
+                    supportingContent = { Text("Msg: ${conv.parsedMessagesCount} (System: ${conv.systemMessagesCount})") },
+                    modifier = Modifier.clickable { onNavigateToResults(conv.id) }
                 )
                 HorizontalDivider()
             }

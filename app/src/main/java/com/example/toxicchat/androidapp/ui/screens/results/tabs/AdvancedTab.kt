@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.OpenInBrowser
@@ -63,25 +64,30 @@ fun AdvancedTab(
 
         Spacer(Modifier.height(24.dp))
 
-        // Response Stats
-        result.responseStats?.let { stats ->
-            Text(
-                "Tempi di risposta (1-1)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(12.dp))
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    ResponseStatRow("Mediana risposta Io -> Altro", "%.1f min".format(stats.medianSelfToOtherMin))
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
-                    ResponseStatRow("Mediana risposta Altro -> Io", "%.1f min".format(stats.medianOtherToSelfMin))
+        // Response Stats (solo se ci sono esattamente 2 speaker)
+        if (result.speakerStats.size == 2) {
+            result.responseStats?.let { stats ->
+                Text(
+                    "Tempi di risposta (1-1)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    val speaker1 = result.speakerStats.getOrNull(0)?.speakerLabel ?: "Partecipante 1"
+                    val speaker2 = result.speakerStats.getOrNull(1)?.speakerLabel ?: "Partecipante 2"
+
+                    Column(Modifier.padding(16.dp)) {
+                        ResponseStatRow(speaker1, speaker2, "%.1f min".format(stats.medianSelfToOtherMin))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
+                        ResponseStatRow(speaker2, speaker1, "%.1f min".format(stats.medianOtherToSelfMin))
+                    }
                 }
+                Spacer(Modifier.height(24.dp))
             }
-            Spacer(Modifier.height(24.dp))
         }
 
         // Distribuzione per partecipante
@@ -331,9 +337,18 @@ private fun shareFile(context: Context, file: File) {
 }
 
 @Composable
-private fun ResponseStatRow(label: String, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+private fun ResponseStatRow(from: String, to: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Text(from, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp).padding(horizontal = 8.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(to, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
         Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Color(0xFF006064))
     }
 }
@@ -343,8 +358,7 @@ fun SpeakerDistributionSection(stats: List<SpeakerToxicityStat>) {
     var expanded by remember { mutableStateOf(false) }
     val displayStats = if (expanded) stats else stats.take(5)
 
-    Text("Distribuzione per partecipante", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    Text("Quota di messaggi sopra soglia", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+    Text("Messaggi critici per partecipante", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(12.dp))
 
     Card(
@@ -379,7 +393,7 @@ fun SpeakerRow(stat: SpeakerToxicityStat) {
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                "${stat.toxicCount}/${stat.totalCount} messaggi",
+                "${stat.toxicCount}/${stat.totalCount} messaggi tossici sui totali mandati",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.Gray
             )
@@ -388,7 +402,7 @@ fun SpeakerRow(stat: SpeakerToxicityStat) {
             "%.1f%%".format(stat.toxicRate * 100),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
-            color = if (stat.toxicRate > 0.15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            color = Color(0xFFD32F2F)
         )
     }
 }

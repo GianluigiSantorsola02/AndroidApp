@@ -13,10 +13,6 @@ object StatisticsEngine {
 
     private const val MIN_MESSAGES_THRESHOLD = 30
 
-    /**
-     * Calcola la serie settimanale basandosi sui messaggi analizzati.
-     * Esclude i messaggi di sistema o non ancora analizzati (toxScore == null).
-     */
     fun computeWeeklySeries(conversationId: String, messages: List<MessageLite>): List<WeeklyPointEntity> {
         val validMessages = messages.filter { it.speakerRaw != null && it.toxScore != null }
         if (validMessages.isEmpty()) return emptyList()
@@ -33,21 +29,19 @@ object StatisticsEngine {
             .map { (weekId, msgs) ->
                 val total = msgs.size
                 val toxic = msgs.count { it.isToxic == true }
+                val maxTox = msgs.maxOfOrNull { it.toxScore ?: 0.0 } ?: 0.0
                 WeeklyPointEntity(
                     conversationId = conversationId,
                     weekId = weekId,
                     totalMessages = total,
                     toxicMessages = toxic,
-                    toxicRate = if (total > 0) toxic.toDouble() / total else 0.0
+                    toxicRate = if (total > 0) toxic.toDouble() / total else 0.0,
+                    maxToxScore = maxTox
                 )
             }
             .sortedBy { it.weekId }
     }
 
-    /**
-     * Calcola la heatmap giorno x ora basandosi sui messaggi analizzati.
-     * Esclude i messaggi di sistema o non ancora analizzati (toxScore == null).
-     */
     fun computeHeatmap(conversationId: String, messages: List<MessageLite>): List<HeatmapCellEntity> {
         val validMessages = messages.filter { it.speakerRaw != null && it.toxScore != null }
         val groups = validMessages.groupBy { msg ->
@@ -76,26 +70,12 @@ object StatisticsEngine {
         return allCells
     }
 
-    /**
-     * Calcola statistiche tempi di risposta (solo 1-a-1).
-     * - Ordina sempre per timestamp (robusto)
-     * - Calcola differenze in secondi (evita median=0 quando molte risposte < 60s)
-     * - Converte in minuti (Double) con decimali nel risultato
-     */
     fun computeResponseStats(
         conversationId: String,
         messages: List<MessageLite>,
-        isGroupConversation: Boolean,
-        selectedSelfName: String?,
-        selfAliases: List<String>
+        isGroupConversation: Boolean
     ): ResponseStatsEntity? {
         if (isGroupConversation) return null
-        if (selectedSelfName.isNullOrBlank()) return null
-
-        val selfSet = buildSet {
-            add(normalizeName(selectedSelfName))
-            selfAliases.forEach { add(normalizeName(it)) }
-        }
 
         val sorted = messages
             .filter { it.speakerRaw != null }
@@ -103,8 +83,15 @@ object StatisticsEngine {
 
         if (sorted.size < 2) return null
 
-        val selfToOtherSec = mutableListOf<Long>()
-        val otherToSelfSec = mutableListOf<Long>()
+        val speakerAtoB = mutableListOf<Long>()
+        val speakerBtoA = mutableListOf<Long>()
+
+        // In a 1-to-1, we identify the two speakers
+        val distinctSpeakers = sorted.mapNotNull { it.speakerRaw }.distinct()
+        if (distinctSpeakers.size < 2) return null
+        
+        val s1 = distinctSpeakers[0]
+        val s2 = distinctSpeakers[1]
 
         for (i in 1 until sorted.size) {
             val prev = sorted[i - 1]
@@ -117,47 +104,29 @@ object StatisticsEngine {
             val diffSec = (curr.timestampEpochMillis - prev.timestampEpochMillis) / 1000L
             if (diffSec < 0L || diffSec >= 86400L) continue // < 24h
 
-            val prevIsSelf = selfSet.contains(normalizeName(prevSpeaker))
-            val currIsSelf = selfSet.contains(normalizeName(currSpeaker))
-
-            if (prevIsSelf && !currIsSelf) selfToOtherSec.add(diffSec)
-            else if (!prevIsSelf && currIsSelf) otherToSelfSec.add(diffSec)
+            if (prevSpeaker == s1 && currSpeaker == s2) speakerAtoB.add(diffSec)
+            else if (prevSpeaker == s2 && currSpeaker == s1) speakerBtoA.add(diffSec)
         }
 
-        if (selfToOtherSec.isEmpty() && otherToSelfSec.isEmpty()) return null
+        if (speakerAtoB.isEmpty() && speakerBtoA.isEmpty()) return null
 
         return ResponseStatsEntity(
             conversationId = conversationId,
-            medianSelfToOtherMin = median(selfToOtherSec) / 60.0,
-            medianOtherToSelfMin = median(otherToSelfSec) / 60.0,
-            meanSelfToOtherMin = mean(selfToOtherSec) / 60.0,
-            meanOtherToSelfMin = mean(otherToSelfSec) / 60.0
+            medianSelfToOtherMin = median(speakerAtoB) / 60.0,
+            medianOtherToSelfMin = median(speakerBtoA) / 60.0,
+            meanSelfToOtherMin = mean(speakerAtoB) / 60.0,
+            meanOtherToSelfMin = mean(speakerBtoA) / 60.0
         )
     }
 
-    /**
-     * Calcola distribuzione “quota sopra soglia” per partecipante.
-     * - Esclude messaggi non analizzati / system: toxScore == null
-     * - Esclude speakerRaw null
-     * - 1-a-1: bucket IO / ALTRO (selfSet)
-     * - Gruppo: bucket per speakerKey normalizzato, label = raw più frequente
-     * - Anti-distorsione: in gruppo aggrega speaker con total < MIN_MESSAGES_THRESHOLD in "Altri"
-     */
     fun computeSpeakerStats(
         conversationId: String,
         messages: List<MessageLite>,
-        isGroupConversation: Boolean,
-        selectedSelfName: String?,
-        selfAliases: List<String>
+        isGroupConversation: Boolean
     ): List<SpeakerStatEntity> {
 
         val valid = messages.filter { it.toxScore != null && it.speakerRaw != null }
         if (valid.isEmpty()) return emptyList()
-
-        val selfSet = buildSet {
-            if (!selectedSelfName.isNullOrBlank()) add(normalizeName(selectedSelfName))
-            selfAliases.forEach { add(normalizeName(it)) }
-        }
 
         data class Acc(
             var total: Int = 0,
@@ -167,33 +136,22 @@ object StatisticsEngine {
 
         val map = mutableMapOf<String, Acc>()
 
-        fun addMsg(key: String, label: String, isToxic: Boolean) {
-            val acc = map.getOrPut(key) { Acc() }
-            acc.total += 1
-            if (isToxic) acc.toxic += 1
-            acc.labelCounts[label] = (acc.labelCounts[label] ?: 0) + 1
-        }
-
         for (m in valid) {
             val raw = m.speakerRaw!!
             val norm = normalizeName(raw)
             val isTox = (m.isToxic == true)
 
-            if (!isGroupConversation) {
-                val isSelf = selfSet.contains(norm)
-                val key = if (isSelf) "self" else "other"
-                val label = if (isSelf) "IO" else "ALTRO"
-                addMsg(key, label, isTox)
-            } else {
-                // key normalizzato, label raw (ma scegliamo poi la più frequente)
-                addMsg(norm, raw.trim(), isTox)
-            }
+            val acc = map.getOrPut(norm) { Acc() }
+            acc.total += 1
+            if (isTox) acc.toxic += 1
+            acc.labelCounts[raw.trim()] = (acc.labelCounts[raw.trim()] ?: 0) + 1
         }
 
-        fun buildEntity(key: String, acc: Acc, forcedLabel: String? = null): SpeakerStatEntity {
-            val label = forcedLabel ?: (acc.labelCounts.maxByOrNull { it.value }?.key ?: key)
+        val base = map.map { (key, acc) ->
+            val label = acc.labelCounts.maxByOrNull { it.value }?.key ?: key
             val rate = if (acc.total > 0) acc.toxic.toDouble() / acc.total else 0.0
-            return SpeakerStatEntity(
+            
+            SpeakerStatEntity(
                 conversationId = conversationId,
                 speakerKey = key,
                 speakerLabel = label,
@@ -202,8 +160,6 @@ object StatisticsEngine {
                 toxicRate = rate
             )
         }
-
-        val base = map.map { (k, acc) -> buildEntity(k, acc) }
 
         val sorter = compareByDescending<SpeakerStatEntity> { it.toxicRate }
             .thenByDescending { it.totalCount }
@@ -226,17 +182,14 @@ object StatisticsEngine {
                     )
                 )
             }
-
             out.sortedWith(sorter)
         } else {
             base.sortedWith(sorter)
         }
     }
 
-    private fun normalizeName(s: String): String =
-        s.trim().lowercase()
+    private fun normalizeName(s: String): String = s.trim().lowercase()
 
-    // median e mean lavorano su secondi (Long) e ritornano Double
     private fun median(l: List<Long>): Double {
         if (l.isEmpty()) return 0.0
         val s = l.sorted()

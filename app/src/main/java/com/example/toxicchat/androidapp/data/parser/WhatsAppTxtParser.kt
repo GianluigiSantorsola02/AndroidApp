@@ -172,7 +172,6 @@ class WhatsAppTxtParser @Inject constructor() {
                         messageId = parsedMessagesCount + 1,
                         timestampIso8601 = isoTimestamp,
                         timestampEpochMillis = epochMillis,
-                        speaker = null,
                         speakerRaw = speakerRaw,
                         textOriginal = text,
                         source = Source.WHATSAPP_TXT,

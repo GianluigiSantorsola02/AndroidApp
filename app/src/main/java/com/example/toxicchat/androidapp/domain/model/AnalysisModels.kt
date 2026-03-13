@@ -18,7 +18,10 @@ data class WeeklyPoint(
     val weekId: String,
     val totalMessages: Int,
     val toxicMessages: Int,
-    val toxicRate: Double
+    val toxicRate: Double,
+    val startMillis: Long,
+    val endMillisExclusive: Long,
+    val maxToxScore: Double? = null
 )
 
 data class HeatmapCell(
@@ -37,6 +40,7 @@ data class ResponseTimeStats(
 )
 
 data class SpeakerToxicityStat(
+    val speakerKey: String,
     val speakerLabel: String,
     val totalCount: Int,
     val toxicCount: Int,
@@ -50,4 +54,21 @@ data class AnalysisResult(
     val heatmap: List<HeatmapCell> = emptyList(),
     val responseStats: ResponseTimeStats? = null,
     val speakerStats: List<SpeakerToxicityStat> = emptyList()
+)
+
+data class MessageEvent(
+    val id: Long,
+    val timestampEpochMillis: Long,
+    val speakerRaw: String,
+    val speakerKey: String = "",
+    val content: String,
+    val toxScore: Double?,
+    val isToxic: Boolean
+)
+
+data class DayStat(
+    val dayStartMillis: Long,
+    val totalMessages: Int,
+    val toxicMessages: Int,
+    val peakToxicity: Double
 )
