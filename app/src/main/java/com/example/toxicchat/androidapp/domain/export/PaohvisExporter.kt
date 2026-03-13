@@ -1,20 +1,28 @@
 package com.example.toxicchat.androidapp.domain.export
 
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.example.toxicchat.androidapp.data.local.AnalysisDao
+import com.example.toxicchat.androidapp.domain.model.MessageEvent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
+import java.text.SimpleDateFormat
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
+import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,8 +41,21 @@ class PaohvisExporter @Inject constructor(
         startMs: Long,
         endMs: Long,
         granularity: PaohvisGranularity
-    ): File = withContext(Dispatchers.IO) {
-        val messages = analysisDao.getMessagesLiteInRange(conversationId, startMs, endMs)
+    ): Uri? = withContext(Dispatchers.IO) {
+        val messagesRaw = analysisDao.getMessagesLiteInRange(conversationId, startMs, endMs)
+        
+        // Mappatura da database projection a domain model MessageEvent per coerenza con saveCsvToDownloads
+        val messages = messagesRaw.map {
+            MessageEvent(
+                id = it.id,
+                timestampEpochMillis = it.timestampEpochMillis,
+                speakerRaw = it.speakerRaw ?: "Sconosciuto",
+                content = it.content ?: "",
+                toxScore = it.toxScore,
+                isToxic = it.isToxic ?: false
+            )
+        }
+
         val actualGranularity = when (granularity) {
             PaohvisGranularity.DAY -> PaohvisGranularity.DAY
             PaohvisGranularity.WEEK -> PaohvisGranularity.WEEK
@@ -61,14 +82,12 @@ class PaohvisExporter @Inject constructor(
             }
         }
 
-        // 1. Aggregations
         val messagesBySlotAndSpeaker = messages.groupBy { getTimeSlot(it.timestampEpochMillis) }
-            .mapValues { (_, slotMsgs) -> slotMsgs.groupBy { it.speakerRaw ?: "Sconosciuto" } }
+            .mapValues { (_, slotMsgs) -> slotMsgs.groupBy { it.speakerRaw } }
 
-        val allParticipants = messages.mapNotNull { it.speakerRaw }.distinct()
+        val allParticipants = messages.map { it.speakerRaw }.distinct()
         val totalMessagesChat = messages.size
         
-        // Calculate total possible slots in range for Presence
         val startDate = Instant.ofEpochMilli(startMs).atZone(ZoneId.systemDefault()).toLocalDate()
         val endDate = Instant.ofEpochMilli(endMs).atZone(ZoneId.systemDefault()).toLocalDate()
         val totalSlotsInRange = if (actualGranularity == PaohvisGranularity.DAY) {
@@ -80,7 +99,6 @@ class PaohvisExporter @Inject constructor(
             ) + 1
         }.toInt().coerceAtLeast(1)
 
-        // 2. Calculate Group (CORE/OCCASIONAL) - Stable over range
         val speakerMetrics = allParticipants.associateWith { speaker ->
             val speakerMsgs = messages.filter { it.speakerRaw == speaker }
             val activeSlotsCount = speakerMsgs.map { getTimeSlot(it.timestampEpochMillis) }.distinct().size
@@ -100,34 +118,71 @@ class PaohvisExporter @Inject constructor(
             if (presence >= 0.30 || score >= top20PercentScore) "CORE" else "OCCASIONAL"
         }
 
-        // 3. Prepare File
-        val dir = File(context.getExternalFilesDir(null), "Documents/exports")
-        if (!dir.exists()) dir.mkdirs()
+        // --- FIXED: NOME FILE CON DATA E GRANULARITÀ ---
+        val datePart = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
+        val fileName = "paohvis_${chatTitle.replace(" ", "_")}_${actualGranularity}_$datePart.csv"
         
-        val fileName = "paohvis_${conversationId}_${actualGranularity}_${startMs}_${endMs}.csv"
-        val file = File(dir, fileName)
+        // --- SALVATAGGIO IN DOWNLOAD ---
+        saveCsvToDownloads(context, fileName, messagesBySlotAndSpeaker, conversationId, chatTitle, groupNames)
+    }
 
-        OutputStreamWriter(FileOutputStream(file), StandardCharsets.UTF_8).use { writer ->
-            // Header in CAPS
-            writer.write("EDGE_ID,NODE_NAME,TIME_SLOT,EDGE_NAME_DESCRIPTION,GROUP_NAME,ROLE\n")
+    private fun saveCsvToDownloads(
+        context: Context,
+        fileName: String,
+        messagesBySlotAndSpeaker: Map<String, Map<String, List<MessageEvent>>>,
+        conversationId: String,
+        chatTitle: String,
+        groupNames: Map<String, String>
+    ): Uri? {
+        val resolver = context.contentResolver
+        val uri: Uri?
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloadsDir, fileName)
+            uri = Uri.fromFile(file)
+        }
 
-            messagesBySlotAndSpeaker.forEach { (slot, speakersInSlot) ->
-                val edgeId = "CHAT_${conversationId}__TS_$slot"
-                val nPeopleSlot = speakersInSlot.size
-                val nMsgSlot = speakersInSlot.values.sumOf { it.size }
-                val description = csvEscape("$chatTitle • $nMsgSlot msg • $nPeopleSlot ppl")
-                
-                val maxMsgsInSlot = speakersInSlot.values.maxOfOrNull { it.size } ?: 0
+        try {
+            val outputStream = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && uri != null) {
+                resolver.openOutputStream(uri)
+            } else {
+                FileOutputStream(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName))
+            }
 
-                speakersInSlot.forEach { (speaker, msgs) ->
-                    val role = if (msgs.size == maxMsgsInSlot) "TOP_SPEAKER" else "ACTIVE"
-                    val group = groupNames[speaker] ?: "OCCASIONAL"
-                    
-                    writer.write("$edgeId,${csvEscape(speaker)},$slot,$description,$group,$role\n")
+            outputStream?.use { os ->
+                OutputStreamWriter(os, StandardCharsets.UTF_8).use { writer ->
+                    writer.write("EDGE_ID,NODE_NAME,TIME_SLOT,EDGE_NAME_DESCRIPTION,GROUP_NAME,ROLE\n")
+
+                    messagesBySlotAndSpeaker.forEach { (slot, speakersInSlot) ->
+                        val edgeId = "CHAT_${conversationId}__TS_$slot"
+                        val nPeopleSlot = speakersInSlot.size
+                        val nMsgSlot = speakersInSlot.values.sumOf { it.size }
+                        val description = csvEscape("$chatTitle • $nMsgSlot msg • $nPeopleSlot ppl")
+                        
+                        val maxMsgsInSlot = speakersInSlot.values.maxOfOrNull { it.size } ?: 0
+
+                        speakersInSlot.forEach { (speaker, msgs) ->
+                            val role = if (msgs.size == maxMsgsInSlot) "TOP_SPEAKER" else "ACTIVE"
+                            val group = groupNames[speaker] ?: "OCCASIONAL"
+                            
+                            writer.write("$edgeId,${csvEscape(speaker)},$slot,$description,$group,$role\n")
+                        }
+                    }
                 }
             }
+            return uri
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
         }
-        file
     }
 
     private fun csvEscape(value: String): String {

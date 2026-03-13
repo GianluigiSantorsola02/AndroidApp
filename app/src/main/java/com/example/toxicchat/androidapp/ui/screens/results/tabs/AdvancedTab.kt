@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.toxicchat.androidapp.domain.export.PaohvisGranularity
 import com.example.toxicchat.androidapp.domain.model.AnalysisResult
@@ -41,7 +40,6 @@ import com.example.toxicchat.androidapp.domain.model.SpeakerToxicityStat
 import com.example.toxicchat.androidapp.ui.screens.results.components.HeatmapGrid
 import com.example.toxicchat.androidapp.ui.screens.results.components.TrendComboChart
 import com.example.toxicchat.androidapp.ui.viewmodel.PaohvisExportViewModel
-import java.io.File
 
 @Composable
 fun AdvancedTab(
@@ -59,12 +57,10 @@ fun AdvancedTab(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Grafico Volume + % Tossicità
         TrendComboChart(result.weeklySeries)
 
         Spacer(Modifier.height(24.dp))
 
-        // Response Stats (solo se ci sono esattamente 2 speaker)
         if (result.speakerStats.size == 2) {
             result.responseStats?.let { stats ->
                 Text(
@@ -90,18 +86,15 @@ fun AdvancedTab(
             }
         }
 
-        // Distribuzione per partecipante
         if (result.speakerStats.isNotEmpty()) {
             SpeakerDistributionSection(stats = result.speakerStats)
             Spacer(Modifier.height(24.dp))
         }
 
-        // Griglia Heatmap
         HeatmapGrid(result.heatmap)
 
         Spacer(Modifier.height(32.dp))
 
-        // Card Ricerca (PAOHVis)
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
             shape = RoundedCornerShape(16.dp)
@@ -160,7 +153,6 @@ fun AdvancedTab(
         Spacer(Modifier.height(48.dp))
     }
 
-    // Export Result Dialog
     exportState?.let { state ->
         ExportResultDialog(
             state = state,
@@ -224,6 +216,13 @@ fun ExportResultDialog(
 ) {
     val context = LocalContext.current
     
+    // Mostra il Toast quando l'export ha successo (come nel report PDF)
+    LaunchedEffect(state) {
+        if (state is PaohvisExportViewModel.ExportState.Success) {
+            Toast.makeText(context, "Export PAOHVis salvato nella cartella Download", Toast.LENGTH_LONG).show()
+        }
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -264,7 +263,7 @@ fun ExportResultDialog(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = when(state) {
-                        is PaohvisExportViewModel.ExportState.Success -> "Il file CSV è pronto per essere analizzato su PAOHVis."
+                        is PaohvisExportViewModel.ExportState.Success -> "Il file CSV è pronto nella cartella Download per essere analizzato su PAOHVis."
                         is PaohvisExportViewModel.ExportState.Error -> state.message
                         else -> ""
                     },
@@ -292,7 +291,7 @@ fun ExportResultDialog(
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedButton(
-                        onClick = { shareFile(context, state.file) },
+                        onClick = { shareFile(context, state.uri) },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
@@ -322,12 +321,7 @@ private fun openPaohVisInBrowser(context: Context) {
     }
 }
 
-private fun shareFile(context: Context, file: File) {
-    val uri = FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        file
-    )
+private fun shareFile(context: Context, uri: Uri) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/csv"
         putExtra(Intent.EXTRA_STREAM, uri)
