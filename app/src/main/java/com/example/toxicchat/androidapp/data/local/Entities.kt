@@ -33,7 +33,10 @@ data class ConversationEntity(
     // range
     val analysisRangePreset: AnalysisRangePreset? = null,
     val analysisRangeStartMillis: Long? = null,
-    val analysisRangeEndMillis: Long? = null
+    val analysisRangeEndMillis: Long? = null,
+
+    // --- METADATA AGGIUNTIVI ---
+    val isGroup: Boolean = false
 )
 
 @Entity(

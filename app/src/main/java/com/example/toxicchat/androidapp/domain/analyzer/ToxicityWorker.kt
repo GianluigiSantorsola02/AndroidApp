@@ -111,12 +111,21 @@ class ToxicityWorker @AssistedInject constructor(
                 }
             }
 
+            // --- AGGREGATION PHASE ---
             val lite = analysisDao.getMessagesLiteInRange(convId, start, end).map {
                 MessageLite(it.id, it.timestampEpochMillis, it.speakerRaw, it.toxScore, it.isToxic)
             }
 
             if (lite.isNotEmpty()) {
-                val isGroup = false // Default or compute if needed, but not from removed field
+                // Calcolo dinamico isGroup basato sui partecipanti reali della conversazione intera
+                // (Non solo dell'intervallo, per coerenza con la natura della chat)
+                val distinctSpeakersCount = analysisDao.countDistinctSpeakers(convId)
+                val isGroup = distinctSpeakersCount > 2
+
+                // Aggiorniamo il flag nel database se diverso (persistenza metadato)
+                if (conv.isGroup != isGroup) {
+                    conversationDao.updateConversation(conv.copy(isGroup = isGroup))
+                }
 
                 val weekly = StatisticsEngine.computeWeeklySeries(convId, lite)
                 val heatmap = StatisticsEngine.computeHeatmap(convId, lite)

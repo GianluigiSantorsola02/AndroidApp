@@ -245,6 +245,9 @@ interface AnalysisDao {
 """)
     suspend fun getWeeklyPointsOnce(conversationId: String): List<WeeklyPointEntity>
 
+    @Query("SELECT COUNT(DISTINCT speakerRaw) FROM messages WHERE conversationId = :id AND speakerRaw IS NOT NULL AND speakerRaw != ''")
+    suspend fun countDistinctSpeakers(id: String): Int
+
     data class MessageLiteProjection(
         val id: Long,
         val timestampEpochMillis: Long,

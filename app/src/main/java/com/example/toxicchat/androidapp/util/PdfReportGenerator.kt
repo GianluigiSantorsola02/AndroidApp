@@ -60,7 +60,8 @@ data class ReportData(
     val maxToxicityScore: Float,
     val responseStats: ResponseTimeStats?,
     val topCriticalWeeks: List<WeeklyTrendPoint>,
-    val isMonthly: Boolean = false // Indica se l'aggregazione è mensile (>20 settimane)
+    val isMonthly: Boolean = false, // Indica se l'aggregazione è mensile (>20 settimane)
+    val isGroup: Boolean = false
 ) {
     val globalToxicityPercentage: Float = if (totalMessages > 0) (toxicMessages.toFloat() / totalMessages) * 100 else 0f
 }
@@ -246,7 +247,8 @@ class PdfReportGenerator {
         drawHorizontalBarChart(canvas, MARGIN, y, PAGE_WIDTH - 2*MARGIN, chartHeight, "% messaggi critici (%)", data.participants, { it.toxicMessages.toFloat() }, COLOR_RED)
         y += chartHeight + 40f
 
-        if (data.participants.size == 2 && data.responseStats != null) {
+        // FIX: Visualizzazione tempi di risposta condizionata dal flag isGroup
+        if (!data.isGroup && data.participants.size == 2 && data.responseStats != null) {
             paint.isFakeBoldText = true
             canvas.drawText("Tempi di risposta medi", MARGIN, y, paint)
             y += 25f

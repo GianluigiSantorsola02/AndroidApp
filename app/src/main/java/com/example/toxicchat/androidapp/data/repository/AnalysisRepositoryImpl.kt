@@ -1,9 +1,10 @@
 package com.example.toxicchat.androidapp.data.repository
 
-import android.util.Log
 import com.example.toxicchat.androidapp.data.local.AnalysisDao
 import com.example.toxicchat.androidapp.data.local.ConversationDao
 import com.example.toxicchat.androidapp.data.local.WeeklyPointEntity
+import com.example.toxicchat.androidapp.data.local.AnalysisMetadataFields
+import com.example.toxicchat.androidapp.data.local.ConversationEntity
 import com.example.toxicchat.androidapp.domain.model.*
 import com.example.toxicchat.androidapp.domain.repository.AnalysisRepository
 import kotlinx.coroutines.flow.Flow
@@ -23,10 +24,14 @@ class AnalysisRepositoryImpl @Inject constructor(
 
     override fun getAnalysisResult(conversationId: String): Flow<AnalysisResult> {
         val metaFlow = analysisDao.getAnalysisMetadataFlow(conversationId)
+        val convFlow = conversationDao.getConversationByIdFlow(conversationId)
+
+        // Combine meta and conv first to stay within 5-parameter limit of combine
+        val metaAndConvFlow = metaFlow.combine(convFlow) { meta, conv -> 
+            meta to conv 
+        }
 
         val weeklyFlow = analysisDao.getWeeklyPointsFlow(conversationId).map { entities ->
-
-
             entities.map {
                 val (start, end) = parseWeekId(it.weekId)
                 WeeklyPoint(
@@ -74,15 +79,17 @@ class AnalysisRepositoryImpl @Inject constructor(
             }
 
         return combine(
-            metaFlow,
+            metaAndConvFlow,
             weeklyFlow,
             heatmapFlow,
             responseFlow,
             speakerFlow
-        ) { metaFields, weekly, heatmap, response, speakerStats ->
+        ) { metaAndConv, weekly, heatmap, response, speakerStats ->
+            val metaFields = metaAndConv.first
+            val convEntity = metaAndConv.second
 
             if (metaFields == null) {
-                return@combine AnalysisResult(
+                AnalysisResult(
                     status = AnalysisStatus.ERRORE,
                     metadata = AnalysisMetadata(),
                     weeklySeries = emptyList(),
@@ -90,26 +97,27 @@ class AnalysisRepositoryImpl @Inject constructor(
                     responseStats = null,
                     speakerStats = emptyList()
                 )
+            } else {
+                val metadata = AnalysisMetadata(
+                    analyzedCount = metaFields.analysisAnalyzedCount,
+                    totalCount = metaFields.analysisTotalCount,
+                    rangePreset = metaFields.analysisRangePreset,
+                    rangeStartMillis = metaFields.analysisRangeStartMillis,
+                    rangeEndMillis = metaFields.analysisRangeEndMillis,
+                    lastAnalyzedAtIso = metaFields.analysisLastAnalyzedAtIso,
+                    modelVersion = metaFields.analysisModelVersion,
+                    isGroup = convEntity?.isGroup ?: false
+                )
+
+                AnalysisResult(
+                    status = metaFields.analysisStatus,
+                    metadata = metadata,
+                    weeklySeries = weekly,
+                    heatmap = heatmap,
+                    responseStats = response,
+                    speakerStats = speakerStats
+                )
             }
-
-            val metadata = AnalysisMetadata(
-                analyzedCount = metaFields.analysisAnalyzedCount,
-                totalCount = metaFields.analysisTotalCount,
-                rangePreset = metaFields.analysisRangePreset,
-                rangeStartMillis = metaFields.analysisRangeStartMillis,
-                rangeEndMillis = metaFields.analysisRangeEndMillis,
-                lastAnalyzedAtIso = metaFields.analysisLastAnalyzedAtIso,
-                modelVersion = metaFields.analysisModelVersion
-            )
-
-            AnalysisResult(
-                status = metaFields.analysisStatus,
-                metadata = metadata,
-                weeklySeries = weekly,
-                heatmap = heatmap,
-                responseStats = response,
-                speakerStats = speakerStats
-            )
         }
     }
 
@@ -232,8 +240,6 @@ class AnalysisRepositoryImpl @Inject constructor(
             response = responseEntity,
             speakerStats = speakerEntities
         )
-        val saved = analysisDao.getWeeklyPointsOnce(conversationId)
-
     }
 
     override suspend fun getCurrentRange(conversationId: String): Triple<AnalysisRangePreset, Long?, Long?>? {

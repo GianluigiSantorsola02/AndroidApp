@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
@@ -44,7 +43,6 @@ class PaohvisExporter @Inject constructor(
     ): Uri? = withContext(Dispatchers.IO) {
         val messagesRaw = analysisDao.getMessagesLiteInRange(conversationId, startMs, endMs)
         
-        // Mappatura da database projection a domain model MessageEvent per coerenza con saveCsvToDownloads
         val messages = messagesRaw.map {
             MessageEvent(
                 id = it.id,
@@ -118,11 +116,9 @@ class PaohvisExporter @Inject constructor(
             if (presence >= 0.30 || score >= top20PercentScore) "CORE" else "OCCASIONAL"
         }
 
-        // --- FIXED: NOME FILE CON DATA E GRANULARITÀ ---
         val datePart = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
         val fileName = "paohvis_${chatTitle.replace(" ", "_")}_${actualGranularity}_$datePart.csv"
         
-        // --- SALVATAGGIO IN DOWNLOAD ---
         saveCsvToDownloads(context, fileName, messagesBySlotAndSpeaker, conversationId, chatTitle, groupNames)
     }
 
@@ -159,9 +155,10 @@ class PaohvisExporter @Inject constructor(
 
             outputStream?.use { os ->
                 OutputStreamWriter(os, StandardCharsets.UTF_8).use { writer ->
-                    writer.write("EDGE_ID,NODE_NAME,TIME_SLOT,EDGE_NAME_DESCRIPTION,GROUP_NAME,ROLE\n")
+                    writer.write("EDGE_ID,NODE_NAME,TIME_SLOT,EDGE_NAME_DESCRIPTION,GROUP_NAME,ROLE,MSG_COUNT,TOXIC_COUNT,TOX_RATE,MAX_TOX\n")
 
-                    messagesBySlotAndSpeaker.forEach { (slot, speakersInSlot) ->
+                    // Ordinamento per TIME_SLOT crescente
+                    messagesBySlotAndSpeaker.toSortedMap().forEach { (slot, speakersInSlot) ->
                         val edgeId = "CHAT_${conversationId}__TS_$slot"
                         val nPeopleSlot = speakersInSlot.size
                         val nMsgSlot = speakersInSlot.values.sumOf { it.size }
@@ -169,11 +166,21 @@ class PaohvisExporter @Inject constructor(
                         
                         val maxMsgsInSlot = speakersInSlot.values.maxOfOrNull { it.size } ?: 0
 
-                        speakersInSlot.forEach { (speaker, msgs) ->
+                        // Ordinamento speaker alfabeticamente
+                        speakersInSlot.toSortedMap().forEach { (speaker, msgs) ->
                             val role = if (msgs.size == maxMsgsInSlot) "TOP_SPEAKER" else "ACTIVE"
                             val group = groupNames[speaker] ?: "OCCASIONAL"
                             
-                            writer.write("$edgeId,${csvEscape(speaker)},$slot,$description,$group,$role\n")
+                            val msgCount = msgs.size
+                            val toxicCount = msgs.count { it.isToxic }
+                            val toxRate = if (msgCount > 0) toxicCount.toDouble() / msgCount else 0.0
+                            val maxTox = msgs.maxOfOrNull { it.toxScore ?: 0.0 } ?: 0.0
+
+                            // Formattazione con Locale.US e 4 decimali
+                            val toxRateStr = String.format(Locale.US, "%.4f", toxRate)
+                            val maxToxStr = String.format(Locale.US, "%.4f", maxTox)
+
+                            writer.write("$edgeId,${csvEscape(speaker)},$slot,$description,$group,$role,$msgCount,$toxicCount,$toxRateStr,$maxToxStr\n")
                         }
                     }
                 }

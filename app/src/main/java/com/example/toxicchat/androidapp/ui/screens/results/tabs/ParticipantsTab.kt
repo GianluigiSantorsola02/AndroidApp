@@ -41,7 +41,6 @@ fun ParticipantsTab(
             .padding(16.dp)
     ) {
         // 1. Dominant Section: Comparison of total vs toxic share
-        // Passiamo anche la lista completa dei messaggi per il dettaglio
         ParticipationWidget(
             stats = result.speakerStats,
             messages = allMessages
@@ -49,8 +48,8 @@ fun ParticipantsTab(
 
         Spacer(Modifier.height(24.dp))
 
-        // 2. Metrics Detail: Response Times (solo se ci sono esattamente 2 speaker)
-        if (result.speakerStats.size == 2) {
+        // 2. Metrics Detail: Response Times (solo se NON è un gruppo)
+        if (!result.metadata.isGroup) {
             result.responseStats?.let { stats ->
                 Text(
                     "Tempi di risposta medi",
@@ -74,9 +73,6 @@ fun ParticipantsTab(
                 Spacer(Modifier.height(24.dp))
             }
         }
-
-        // Rimosso: SpeakerDistributionSectionInternal (Messaggi critici per partecipante)
-        // La logica è ora integrata nel dettaglio del ParticipationWidget
 
         // 4. Advanced Export Flow (PAOHVis)
         ResearchModeCardInternal(

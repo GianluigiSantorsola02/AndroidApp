@@ -220,6 +220,15 @@ fun ParticipationWidget(
                     }
                 )
             }
+
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = "Tocca sulla colonna o sul nome per mostrare i dettagli del partecipante",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 
