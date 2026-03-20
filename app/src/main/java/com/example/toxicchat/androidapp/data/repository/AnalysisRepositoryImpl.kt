@@ -106,7 +106,8 @@ class AnalysisRepositoryImpl @Inject constructor(
                     rangeEndMillis = metaFields.analysisRangeEndMillis,
                     lastAnalyzedAtIso = metaFields.analysisLastAnalyzedAtIso,
                     modelVersion = metaFields.analysisModelVersion,
-                    isGroup = convEntity?.isGroup ?: false
+                    isGroup = convEntity?.isGroup ?: false,
+                    title = convEntity?.title ?: ""
                 )
 
                 AnalysisResult(

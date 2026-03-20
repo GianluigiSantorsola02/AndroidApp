@@ -12,7 +12,8 @@ data class AnalysisMetadata(
     val rangeEndMillis: Long? = null,
     val lastAnalyzedAtIso: String? = null,
     val modelVersion: String? = null,
-    val isGroup: Boolean = false
+    val isGroup: Boolean = false,
+    val title: String = ""
 )
 
 data class WeeklyPoint(

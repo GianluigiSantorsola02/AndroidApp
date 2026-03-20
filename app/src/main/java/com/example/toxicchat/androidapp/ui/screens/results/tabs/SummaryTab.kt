@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -282,9 +284,17 @@ fun SummaryTab(
             dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
             Box(Modifier.fillMaxHeight(0.85f)) {
+                val allParticipants = remember(result.speakerStats) {
+                    result.speakerStats
+                        .map { it.speakerLabel.trim() }
+                        .filter { it.isNotEmpty() && !it.equals("Sistema", ignoreCase = true) }
+                        .distinct()
+                }
                 HeatmapSlotMessages(
                     cell = activeFilterCell!!,
-                    messages = heatmapMessages
+                    messages = heatmapMessages,
+                    isGroup = result.metadata.isGroup,
+                    allParticipants = allParticipants
                 )
             }
         }
@@ -383,7 +393,9 @@ fun HeatmapCellDetail(
 @Composable
 fun HeatmapSlotMessages(
     cell: HeatmapCell,
-    messages: List<MessageEvent>
+    messages: List<MessageEvent>,
+    isGroup: Boolean,
+    allParticipants: List<String>
 ) {
     var toxicOnly by remember { mutableStateOf(false) }
     val displayMessages = if (toxicOnly) messages.filter { it.isToxic } else messages
@@ -456,13 +468,45 @@ fun HeatmapSlotMessages(
                 ) {
                     Column(Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = msg.speakerRaw,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (msg.isToxic) itemSeverityColor else Color(0xFF006064)
-                            )
-                            Spacer(Modifier.weight(1f))
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = msg.speakerRaw,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (msg.isToxic) itemSeverityColor else Color(0xFF006064),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Spacer(Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color(0xFF006064).copy(alpha = 0.8f)
+                                )
+                                Spacer(Modifier.width(8.dp))
+
+                                if (isGroup) {
+                                    Icon(
+                                        imageVector = Icons.Default.Groups,
+                                        contentDescription = "Gruppo",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = Color.Gray
+                                    )
+                                } else {
+                                    val recipient = allParticipants.firstOrNull { !it.equals(msg.speakerRaw, ignoreCase = true) } ?: "Altro"
+                                    Text(
+                                        text = recipient,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Gray,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
                             val instant = Instant.ofEpochMilli(msg.timestampEpochMillis)
                             Text(
                                 text = "${dateFormatter.format(instant)} · ${timeFormatter.format(instant)}",

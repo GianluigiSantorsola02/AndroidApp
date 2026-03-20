@@ -11,12 +11,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +29,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.toxicchat.androidapp.domain.model.AnalysisResult
@@ -79,6 +82,13 @@ fun DynamicsTab(
         selectedWeek?.maxToxScore
     )
 
+    val allConversationParticipants = remember(result.speakerStats) {
+        result.speakerStats
+            .map { it.speakerLabel.trim() }
+            .filter { it.isNotEmpty() && !it.equals("Sistema", ignoreCase = true) }
+            .distinct()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -98,89 +108,86 @@ fun DynamicsTab(
 
         Spacer(Modifier.height(32.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+        // Card esterna rimossa, contenuti inseriti direttamente
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(
+                    onClick = { if (hasPrev) onSelectWeek(result.weeklySeries[currentIndex - 1]) },
+                    enabled = hasPrev
                 ) {
-                    IconButton(
-                        onClick = { if (hasPrev) onSelectWeek(result.weeklySeries[currentIndex - 1]) },
-                        enabled = hasPrev
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = "Precedente",
-                            tint = if (hasPrev) Color.DarkGray else Color.LightGray
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { showWeekPicker = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(headerSeverityColor, CircleShape)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        selectedWeek?.let {
-                            val startStr = rangeFormatter.format(Instant.ofEpochMilli(it.startMillis))
-                            val endStr = rangeFormatter.format(Instant.ofEpochMilli(it.endMillisExclusive - 1000))
-                            Text(
-                                text = "$startStr - $endStr",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.DarkGray
-                            )
-                        }
-                        Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.Gray)
-                    }
-
-                    IconButton(
-                        onClick = { if (hasNext) onSelectWeek(result.weeklySeries[currentIndex + 1]) },
-                        enabled = hasNext
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = "Successiva",
-                            tint = if (hasNext) Color.DarkGray else Color.LightGray
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                if (selectedWeek != null) {
-                    val weekParticipants = remember(selectedWeekEvents) {
-                        selectedWeekEvents
-                            .map { it.speakerRaw.trim() }
-                            .filter { it.isNotEmpty() }
-                            .distinct()
-                            .sorted()
-                    }
-
-                    EventTimelineChart(
-                        events = selectedWeekEvents,
-                        participants = weekParticipants,
-                        startMillis = selectedWeek.startMillis,
-                        endMillis = selectedWeek.endMillisExclusive,
-                        selectedDayMillis = selectedDayStartMillis,
-                        onDayClick = { onSelectDay(it) },
-                        modifier = Modifier.height(280.dp)
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "Precedente",
+                        tint = if (hasPrev) Color.DarkGray else Color.LightGray
                     )
                 }
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showWeekPicker = true }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(headerSeverityColor, CircleShape)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    selectedWeek?.let {
+                        val startStr = rangeFormatter.format(Instant.ofEpochMilli(it.startMillis))
+                        val endStr = rangeFormatter.format(Instant.ofEpochMilli(it.endMillisExclusive - 1000))
+                        Text(
+                            text = "$startStr - $endStr",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.DarkGray
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.Gray)
+                }
+
+                IconButton(
+                    onClick = { if (hasNext) onSelectWeek(result.weeklySeries[currentIndex + 1]) },
+                    enabled = hasNext
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Successiva",
+                        tint = if (hasNext) Color.DarkGray else Color.LightGray
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            if (selectedWeek != null) {
+                val activeWeekParticipants = remember(selectedWeekEvents) {
+                    selectedWeekEvents
+                        .map { it.speakerRaw.trim() }
+                        .filter { it.isNotEmpty() && !it.equals("Sistema", ignoreCase = true) }
+                        .distinct()
+                        .sorted()
+                }
+
+                EventTimelineChart(
+                    events = selectedWeekEvents,
+                    activeParticipants = activeWeekParticipants,
+                    allParticipants = allConversationParticipants,
+                    isGroup = result.metadata.isGroup,
+                    groupTitle = result.metadata.title,
+                    startMillis = selectedWeek.startMillis,
+                    endMillis = selectedWeek.endMillisExclusive,
+                    selectedDayMillis = selectedDayStartMillis,
+                    onDayClick = { onSelectDay(it) },
+                    modifier = Modifier.height(320.dp) // Altezza aumentata
+                )
             }
         }
 
@@ -295,7 +302,9 @@ fun DynamicsTab(
                 DailyBurstDetail(
                     dayStartMillis = selectedDayStartMillis,
                     events = dayEvents,
-                    fullDateFormatter = fullDateFormatter
+                    fullDateFormatter = fullDateFormatter,
+                    isGroup = result.metadata.isGroup,
+                    allParticipants = allConversationParticipants
                 )
             }
         }
@@ -379,7 +388,9 @@ fun WeekPickerContent(
 fun DailyBurstDetail(
     dayStartMillis: Long,
     events: List<MessageEvent>,
-    fullDateFormatter: DateTimeFormatter
+    fullDateFormatter: DateTimeFormatter,
+    isGroup: Boolean,
+    allParticipants: List<String>
 ) {
     var toxicOnly by remember { mutableStateOf(false) }
     val displayEvents = if (toxicOnly) events.filter { it.isToxic } else events
@@ -461,7 +472,7 @@ fun DailyBurstDetail(
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             items(displayEvents) { event ->
-                MessageItem(event, hourFormatter)
+                MessageItem(event, hourFormatter, isGroup, allParticipants)
             }
             if (displayEvents.isEmpty()) {
                 item {
@@ -589,7 +600,12 @@ fun HourlyTimeline(
 }
 
 @Composable
-fun MessageItem(event: MessageEvent, formatter: DateTimeFormatter) {
+fun MessageItem(
+    event: MessageEvent,
+    formatter: DateTimeFormatter,
+    isGroup: Boolean,
+    allParticipants: List<String>
+) {
     val timeStr = formatter.format(Instant.ofEpochMilli(event.timestampEpochMillis))
     
     // Colore specifico per il livello di tossicità di questo messaggio
@@ -604,13 +620,43 @@ fun MessageItem(event: MessageEvent, formatter: DateTimeFormatter) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = event.speakerRaw,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (event.isToxic) itemSeverityColor else Color(0xFF006064)
-                )
-                Spacer(Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = event.speakerRaw,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (event.isToxic) itemSeverityColor else Color(0xFF006064),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.padding(horizontal = 8.dp).size(20.dp),
+                        tint = Color(0xFF006064)
+                    )
+
+                    if (isGroup) {
+                        Icon(
+                            imageVector = Icons.Default.Groups,
+                            contentDescription = "Gruppo",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.Gray
+                        )
+                    } else {
+                        val recipient = allParticipants.firstOrNull { !it.equals(event.speakerRaw, ignoreCase = true) } ?: "Altro"
+                        Text(
+                            text = recipient,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
                 Text(timeStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
 

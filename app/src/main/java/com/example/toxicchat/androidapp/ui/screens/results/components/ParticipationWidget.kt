@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -175,6 +177,7 @@ private fun getSeverityColor(toxicMessages: Int, maxTox: Double?): Color = when 
 fun ParticipationWidget(
     stats: List<SpeakerToxicityStat>,
     messages: List<MessageEvent> = emptyList(),
+    isGroup: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val uiModel = remember(stats) { ParticipationDataProcessor.buildUIModel(stats) }
@@ -182,6 +185,8 @@ fun ParticipationWidget(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val selectedStat = uiModel.rawStats.find { it.speakerLabel == selectedParticipantState?.name }
+
+    val allParticipants = remember(stats) { stats.map { it.speakerLabel } }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -244,7 +249,9 @@ fun ParticipationWidget(
             ParticipantDetailBottomSheetContent(
                 stat = selectedStat,
                 initialSource = selectedParticipantState!!.source,
-                allMessages = messages
+                allMessages = messages,
+                isGroup = isGroup,
+                allParticipants = allParticipants
             )
         }
     }
@@ -254,7 +261,9 @@ fun ParticipationWidget(
 private fun ParticipantDetailBottomSheetContent(
     stat: SpeakerToxicityStat,
     initialSource: SelectedChartSource,
-    allMessages: List<MessageEvent>
+    allMessages: List<MessageEvent>,
+    isGroup: Boolean,
+    allParticipants: List<String>
 ) {
     var showOnlyToxic by remember { mutableStateOf(initialSource == SelectedChartSource.TOXIC_MESSAGES) }
     
@@ -353,7 +362,7 @@ private fun ParticipantDetailBottomSheetContent(
                 contentPadding = PaddingValues(bottom = 32.dp)
             ) {
                 items(filteredMessages, key = { it.id }) { msg ->
-                    ParticipantMessageItem(msg, dateTimeFormatter)
+                    ParticipantMessageItem(msg, dateTimeFormatter, isGroup, allParticipants)
                 }
             }
         }
@@ -384,7 +393,12 @@ private fun DetailPillInternal(label: String, value: String, color: Color) {
 }
 
 @Composable
-private fun ParticipantMessageItem(msg: MessageEvent, formatter: DateTimeFormatter) {
+private fun ParticipantMessageItem(
+    msg: MessageEvent,
+    formatter: DateTimeFormatter,
+    isGroup: Boolean,
+    allParticipants: List<String>
+) {
     val timeStr = formatter.format(Instant.ofEpochMilli(msg.timestampEpochMillis))
     val itemSeverityColor = getSeverityColor(if (msg.isToxic) 1 else 0, msg.toxScore)
 
@@ -397,13 +411,45 @@ private fun ParticipantMessageItem(msg: MessageEvent, formatter: DateTimeFormatt
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = msg.speakerRaw,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (msg.isToxic) itemSeverityColor else Color(0xFF006064)
-                )
-                Spacer(Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = msg.speakerRaw,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (msg.isToxic) itemSeverityColor else Color(0xFF006064),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF006064).copy(alpha = 0.8f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+
+                    if (isGroup) {
+                        Icon(
+                            imageVector = Icons.Default.Groups,
+                            contentDescription = "Gruppo",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.Gray
+                        )
+                    } else {
+                        val recipient = allParticipants.firstOrNull { !it.equals(msg.speakerRaw, ignoreCase = true) } ?: "Altro"
+                        Text(
+                            text = recipient,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
                 Text(timeStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
 

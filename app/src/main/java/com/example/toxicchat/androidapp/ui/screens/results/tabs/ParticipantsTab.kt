@@ -43,7 +43,8 @@ fun ParticipantsTab(
         // 1. Dominant Section: Comparison of total vs toxic share
         ParticipationWidget(
             stats = result.speakerStats,
-            messages = allMessages
+            messages = allMessages,
+            isGroup = result.metadata.isGroup
         )
 
         Spacer(Modifier.height(24.dp))
