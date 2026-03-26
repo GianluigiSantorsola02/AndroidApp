@@ -35,17 +35,14 @@ class ToxicityWorker @AssistedInject constructor(
 
         val conv = conversationDao.getConversationById(convId) ?: return Result.failure()
 
-        var start = conv.analysisRangeStartMillis
-        var end = conv.analysisRangeEndMillis
-        var preset = conv.analysisRangePreset
+        val start = conv.analysisRangeStartMillis
+        val end = conv.analysisRangeEndMillis
+        val preset = conv.analysisRangePreset
         
         if (start == null || end == null || preset == null) {
-            val min = analysisDao.getMinTimestamp(convId) ?: return Result.failure()
-            val max = analysisDao.getMaxTimestamp(convId) ?: return Result.failure()
-            start = min
-            end = max
-            preset = AnalysisRangePreset.ALL_TIME
-            analysisDao.setAnalysisRange(convId, preset, start, end)
+            Log.e("ToxicityWorker", "Analisi annullata: range non configurato per convId $convId")
+            analysisDao.updateStatus(convId, AnalysisStatus.ERRORE)
+            return Result.failure()
         }
 
         val totalInRange = analysisDao.countTotalMessagesInRange(convId, start, end)

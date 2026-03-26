@@ -110,9 +110,13 @@ class AnalysisViewModel @Inject constructor(
             id to filter
         }.flatMapLatest { (id, filter) ->
             val result = (uiState.value as? AnalysisResultUiState.Success)?.result
-            val start = result?.metadata?.rangeStartMillis ?: 0L
-            val end = result?.metadata?.rangeEndMillis ?: System.currentTimeMillis()
-            repository.getMessagesByPatternFlow(id, start, end, filter.dayOfWeek, filter.hour)
+            val start = result?.metadata?.rangeStartMillis
+            val end = result?.metadata?.rangeEndMillis
+            if (start != null && end != null) {
+                repository.getMessagesByPatternFlow(id, start, end, filter.dayOfWeek, filter.hour)
+            } else {
+                flowOf(emptyList())
+            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -125,11 +129,13 @@ class AnalysisViewModel @Inject constructor(
             uiState.flatMapLatest { state ->
                 if (state is AnalysisResultUiState.Success) {
                     val meta = state.result.metadata
-                    repository.getMessageEventsInRangeFlow(
-                        id,
-                        meta.rangeStartMillis ?: 0L,
-                        meta.rangeEndMillis ?: System.currentTimeMillis()
-                    )
+                    val start = meta.rangeStartMillis
+                    val end = meta.rangeEndMillis
+                    if (start != null && end != null) {
+                        repository.getMessageEventsInRangeFlow(id, start, end)
+                    } else {
+                        flowOf(emptyList())
+                    }
                 } else {
                     flowOf(emptyList())
                 }
@@ -240,11 +246,11 @@ class AnalysisViewModel @Inject constructor(
         val result = state.result
 
         viewModelScope.launch {
-            val messages = repository.getMessageEventsInRange(
-                conv.id,
-                result.metadata.rangeStartMillis ?: 0L,
-                result.metadata.rangeEndMillis ?: System.currentTimeMillis()
-            )
+            val start = result.metadata.rangeStartMillis
+            val end = result.metadata.rangeEndMillis
+            if (start == null || end == null) return@launch
+
+            val messages = repository.getMessageEventsInRange(conv.id, start, end)
             val reportData = mapToReportData(conv, result, messages)
             val generator = PdfReportGenerator()
             val uri = generator.generate(appContext, reportData, privacyMode)

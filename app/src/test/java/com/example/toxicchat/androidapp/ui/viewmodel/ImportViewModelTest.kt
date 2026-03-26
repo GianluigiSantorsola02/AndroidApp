@@ -3,6 +3,7 @@ package com.example.toxicchat.androidapp.ui.viewmodel
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import com.example.toxicchat.androidapp.data.importer.SharedImportManager
 import com.example.toxicchat.androidapp.data.local.ConversationEntity
 import com.example.toxicchat.androidapp.data.parser.WhatsAppTxtParser
 import com.example.toxicchat.androidapp.domain.model.DateOrderUsed
@@ -34,6 +35,7 @@ class ImportViewModelTest {
     private val repository = mockk<ChatRepository>(relaxed = true)
     private val contentResolver = mockk<ContentResolver>(relaxed = true)
     private val context = mockk<Context>(relaxed = true)
+    private val sharedImportManager = mockk<SharedImportManager>(relaxed = true)
 
     private val parser = WhatsAppTxtParser()
     private lateinit var viewModel: ImportViewModel
@@ -44,7 +46,7 @@ class ImportViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         every { context.contentResolver } returns contentResolver
-        viewModel = ImportViewModel(context, repository, parser)
+        viewModel = ImportViewModel(context, repository, parser, sharedImportManager)
     }
 
     @After
@@ -68,7 +70,6 @@ class ImportViewModelTest {
 
         coVerify(exactly = 0) { repository.insertConversation(any()) }
         coVerify(exactly = 0) { repository.insertMessagesBatch(any()) }
-        coVerify(exactly = 0) { repository.updateConversation(any()) }
     }
 
     @Test
@@ -96,7 +97,6 @@ class ImportViewModelTest {
         every { contentResolver.openInputStream(uri) } returns first andThen second
 
         val convInsertSlot = slot<ConversationEntity>()
-        val convUpdateSlot = slot<ConversationEntity>()
         val batchSlot = slot<List<MessageRecord>>()
 
         viewModel.startImport(uri, "test.txt")
@@ -111,10 +111,8 @@ class ImportViewModelTest {
 
         coVerify(exactly = 1) { repository.insertConversation(capture(convInsertSlot)) }
         coVerify(atLeast = 1) { repository.insertMessagesBatch(capture(batchSlot)) }
-        coVerify(exactly = 1) { repository.updateConversation(capture(convUpdateSlot)) }
 
         assertEquals(imported.conversationId, convInsertSlot.captured.id)
-        assertEquals(imported.conversationId, convUpdateSlot.captured.id)
         assertTrue(batchSlot.captured.isNotEmpty())
         assertTrue(batchSlot.captured.all { it.conversationId == imported.conversationId })
     }
@@ -135,7 +133,6 @@ class ImportViewModelTest {
 
         coVerify(exactly = 1) { repository.insertConversation(any()) }
         coVerify(atLeast = 1) { repository.insertMessagesBatch(any()) }
-        coVerify(exactly = 1) { repository.updateConversation(any()) }
     }
 
     private fun stubOpenInputStream(uri: Uri, lines: List<String>) {
