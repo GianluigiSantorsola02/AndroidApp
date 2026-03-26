@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.toxicchat.androidapp.data.importer.ReadResult
+import com.example.toxicchat.androidapp.data.importer.SharedImportManager
 import com.example.toxicchat.androidapp.data.importer.WhatsAppExportReader
 import com.example.toxicchat.androidapp.data.local.ConversationEntity
 import com.example.toxicchat.androidapp.data.parser.WhatsAppTxtParser
@@ -33,11 +34,22 @@ sealed class ImportState {
 class ImportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: ChatRepository,
-    private val parser: WhatsAppTxtParser
+    private val parser: WhatsAppTxtParser,
+    private val sharedImportManager: SharedImportManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ImportState>(ImportState.Idle)
     val uiState: StateFlow<ImportState> = _uiState.asStateFlow()
+
+    // Espone il file pendente per permettere alla UI di visualizzarlo
+    val pendingImport = sharedImportManager.pendingImport
+
+    fun consumeSharedFile() {
+        val pending = sharedImportManager.consumeImport()
+        if (pending != null) {
+            startImport(pending.fileUri, pending.fileName)
+        }
+    }
 
     fun startImport(uri: Uri, fileName: String) {
         viewModelScope.launch {
