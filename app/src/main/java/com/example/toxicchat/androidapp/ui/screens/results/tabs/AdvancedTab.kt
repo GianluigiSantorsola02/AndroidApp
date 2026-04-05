@@ -200,7 +200,7 @@ fun PaohvisConfigDialog(
         },
         confirmButton = {
             Button(onClick = { onExport(selectedGranularity) }) {
-                Text("Esporta CSV")
+                Text("Configura CSV")
             }
         },
         dismissButton = {
@@ -255,7 +255,7 @@ fun ExportResultDialog(
 
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = if (state is PaohvisExportViewModel.ExportState.Success) "Export completato!" else "Errore export",
+                    text = if (state is PaohvisExportViewModel.ExportState.Success) "Conversione completata!" else "Errore conversione",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
