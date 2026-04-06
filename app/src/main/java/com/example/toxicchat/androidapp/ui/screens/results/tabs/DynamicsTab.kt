@@ -254,7 +254,7 @@ fun DynamicsTab(
     if (showWeekPicker) {
         ModalBottomSheet(
             onDismissRequest = { showWeekPicker = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
             containerColor = Color.White,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             dragHandle = { BottomSheetDefaults.DragHandle() }
@@ -262,7 +262,7 @@ fun DynamicsTab(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.72f)
+                    .fillMaxHeight(0.85f)
             ) {
                 WeekPickerContent(
                     weeks = result.weeklySeries,
@@ -289,7 +289,7 @@ fun DynamicsTab(
 
         ModalBottomSheet(
             onDismissRequest = { onSelectDay(null) },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
             containerColor = Color.White,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             dragHandle = { BottomSheetDefaults.DragHandle() }
@@ -297,7 +297,7 @@ fun DynamicsTab(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.72f)
+                    .fillMaxHeight(0.85f)
             ) {
                 DailyBurstDetail(
                     dayStartMillis = selectedDayStartMillis,
@@ -321,7 +321,7 @@ fun WeekPickerContent(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 24.dp)
             .navigationBarsPadding()
     ) {
@@ -406,8 +406,9 @@ fun DailyBurstDetail(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 20.dp)
+            .navigationBarsPadding()
     ) {
         val dateText = fullDateFormatter.format(Instant.ofEpochMilli(dayStartMillis))
         Text(

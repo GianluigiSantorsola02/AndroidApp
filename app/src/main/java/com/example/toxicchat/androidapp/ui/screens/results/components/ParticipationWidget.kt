@@ -31,6 +31,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
 
 // --- Models ---
 
@@ -109,7 +110,7 @@ object ParticipationDataProcessor {
                 speakerLabel = stat.speakerLabel,
                 totalCount = stat.totalCount,
                 toxicCount = stat.toxicCount,
-                globalPercentage = ((stat.totalCount.toFloat() / totalMessagesInPeriod) * 100).toInt(),
+                globalPercentage = ((stat.totalCount.toFloat() / totalMessagesInPeriod) * 100).roundToInt(),
                 buckets = List(numBuckets) { i ->
                     BucketData(i, bucketCounts[i], bucketToxicCounts[i])
                 }
@@ -370,25 +371,34 @@ private fun ParticipantDetailBottomSheetContent(
     onClearBucketFilter: () -> Unit
 ) {
     var showOnlyToxic by remember { mutableStateOf(selectedState.source == SelectedChartSource.TOXIC_MESSAGES) }
+    
+    // Tutti i messaggi dell'autore scelto
     val participantMessages = remember(allMessages, stat.speakerLabel) {
         allMessages.filter { it.speakerRaw == stat.speakerLabel }
     }
     
-    val filteredMessages = remember(participantMessages, showOnlyToxic, selectedState.bucketFilter) {
-        var list = participantMessages
-        if (showOnlyToxic) {
-            list = list.filter { it.isToxic }
-        }
+    // Messaggi filtrati per il bucket (Giorno/Ora) se selezionato, altrimenti tutti quelli dell'autore
+    val messagesInBucket = remember(participantMessages, selectedState.bucketFilter) {
         if (selectedState.bucketFilter != null) {
-            list = list.filter { msg ->
+            participantMessages.filter { msg ->
                 ParticipationDataProcessor.getBucketIndex(msg.timestampEpochMillis, selectedState.isDaily) == selectedState.bucketFilter
             }
+        } else {
+            participantMessages
         }
-        list
     }
 
-    val maxToxScore = remember(participantMessages) {
-        participantMessages.maxOfOrNull { it.toxScore ?: 0.0 } ?: 0.0
+    // Calcolo dinamico dei conteggi basato sul bucket selezionato
+    val displayTotalCount = messagesInBucket.size
+    val displayToxicCount = messagesInBucket.count { it.isToxic }
+    
+    // Messaggi da visualizzare nella lista (applica anche il toggle Solo Tossici)
+    val filteredMessages = remember(messagesInBucket, showOnlyToxic) {
+        if (showOnlyToxic) messagesInBucket.filter { it.isToxic } else messagesInBucket
+    }
+
+    val maxToxScore = remember(messagesInBucket) {
+        messagesInBucket.maxOfOrNull { it.toxScore ?: 0.0 } ?: 0.0
     }
 
     val dateTimeFormatter = remember {
@@ -417,9 +427,9 @@ private fun ParticipantDetailBottomSheetContent(
 
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val critColor = getSeverityColor(stat.toxicCount, maxToxScore)
-            DetailPillVertical(label = "Messaggi", value = stat.totalCount.toString(), color = Color.Gray)
-            DetailPillVertical(label = "Critici", value = stat.toxicCount.toString(), color = critColor)
+            val critColor = getSeverityColor(displayToxicCount, maxToxScore)
+            DetailPillVertical(label = "Messaggi", value = displayTotalCount.toString(), color = Color.Gray)
+            DetailPillVertical(label = "Critici", value = displayToxicCount.toString(), color = critColor)
         }
 
         Spacer(Modifier.height(24.dp))
