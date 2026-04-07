@@ -2,6 +2,7 @@ package com.example.toxicchat.androidapp.ui.screens.results.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -32,6 +34,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.ln1p
 
 @Composable
 fun EventTimelineChart(
@@ -46,10 +49,13 @@ fun EventTimelineChart(
     onDayClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Colori di severità
     val colorSottoSoglia = Color(0xFFBDBDBD) 
     val colorTossico = Color(0xFFFFA000)    
     val colorAltamenteTossico = Color(0xFFD32F2F)
+
+    val strokeSottoSoglia = Color(0xFF757575)
+    val strokeTossico = Color(0xFFE65100)
+    val strokeAltamenteTossico = Color(0xFF8E0000)
 
     val leftColumnWidth = 64.dp
     val rightColumnWidth = 64.dp
@@ -76,7 +82,50 @@ fun EventTimelineChart(
     val safeEndMillis = if (endMillis > startMillis) endMillis else startMillis + 86400000L * 7
     val timeSpan = (safeEndMillis - startMillis).coerceAtLeast(1L)
 
-    // Icone Material
+    // Helper per categorizzare la gravità
+    fun getSeverityCategory(score: Double): Int = when {
+        score < 0.50 -> 0 // Safe
+        score < 0.80 -> 1 // Toxic
+        else -> 2         // Critical
+    }
+
+    // CAMPIONAMENTO E DENSITÀ PER CATEGORIA
+    val densityBins = 168 // 1 bin per ora
+    val samplingBins = 56 // 1 bin ogni 3 ore per il campionamento dei safe
+    
+    // Mappa densità globale (calcolata su tutti gli eventi prima del filtraggio)
+    val categoryDensityMap = remember(events, startMillis, timeSpan) {
+        val counts = mutableMapOf<Triple<String, Int, Int>, Int>()
+        events.forEach { event ->
+            val progress = (event.timestampEpochMillis - startMillis).toFloat() / timeSpan
+            val bin = (progress * densityBins).toInt().coerceIn(0, densityBins - 1)
+            val cat = getSeverityCategory(event.toxScore ?: 0.0)
+            val key = Triple(event.speakerRaw.trim().lowercase(), bin, cat)
+            counts[key] = (counts[key] ?: 0) + 1
+        }
+        counts
+    }
+
+    val processedEvents = remember(events, startMillis, timeSpan) {
+        val safeCounter = mutableMapOf<Pair<String, Int>, Int>()
+        events.filter { event ->
+            val score = event.toxScore ?: 0.0
+            if (score >= 0.50) return@filter true // Tossici e Critici: 100% visibili
+            
+            val progress = (event.timestampEpochMillis - startMillis).toFloat() / timeSpan
+            val bin = (progress * samplingBins).toInt().coerceIn(0, samplingBins - 1)
+            val key = event.speakerRaw.trim().lowercase() to bin
+            
+            val currentSafeCount = safeCounter[key] ?: 0
+            if (currentSafeCount < 1) { // 1 pallino rappresentativo per fascia oraria safe
+                safeCounter[key] = currentSafeCount + 1
+                true
+            } else {
+                false
+            }
+        }.sortedBy { it.toxScore ?: 0.0 } // Ordine crescente: i rossi (valori alti) sono gli ultimi e stanno sopra
+    }
+
     val sendPainter = rememberVectorPainter(Icons.AutoMirrored.Filled.Send)
     val inboxPainter = rememberVectorPainter(Icons.Filled.Inbox)
 
@@ -86,20 +135,16 @@ fun EventTimelineChart(
             .background(Color.White, RoundedCornerShape(12.dp))
             .padding(12.dp)
     ) {
-        // Legend + Info
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Legenda Tossicità
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LegendItem("Sotto soglia", colorSottoSoglia)
-                LegendItem("Tossico", colorTossico)
-                LegendItem("Critico", colorAltamenteTossico)
+                LegendItem("Sotto soglia", colorSottoSoglia, strokeSottoSoglia)
+                LegendItem("Tossico", colorTossico, strokeTossico)
+                LegendItem("Critico", colorAltamenteTossico, strokeAltamenteTossico)
             }
-            
-            // Legenda Ruoli (Sostituisce il riquadro grigio "Destinatario: Gruppo")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IconLegendItem("Mittente", sendPainter)
                 IconLegendItem("Destinatario", inboxPainter)
@@ -107,8 +152,6 @@ fun EventTimelineChart(
         }
 
         Spacer(Modifier.height(16.dp))
-
-
 
         if (filteredActive.isEmpty()) {
             Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
@@ -118,7 +161,6 @@ fun EventTimelineChart(
         }
 
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            // COLONNA SINISTRA
             Column(
                 modifier = Modifier.width(leftColumnWidth).fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceAround
@@ -134,7 +176,6 @@ fun EventTimelineChart(
                 }
             }
 
-            // CENTRO: Plot Timeline con Icone
             Canvas(
                 modifier = Modifier
                     .weight(1f)
@@ -155,11 +196,9 @@ fun EventTimelineChart(
                 val height = size.height
                 val rowCount = filteredActive.size
                 val rowHeight = height / rowCount.toFloat()
-                
                 val horizontalPadding = 16.dp.toPx()
                 val chartWidth = width - 2 * horizontalPadding
 
-                // Sfondo giorno selezionato
                 selectedDayMillis?.let { sel ->
                     val dayIdx = ((sel - startMillis) / 86400000L).toInt()
                     if (dayIdx in 0..6) {
@@ -171,68 +210,95 @@ fun EventTimelineChart(
                     }
                 }
 
-                // Linee verticali
                 for (i in 0..7) {
                     val x = horizontalPadding + (i / 7f) * chartWidth
-                    drawLine(
-                        color = Color.LightGray.copy(alpha = 0.4f),
-                        start = Offset(x, 0f), end = Offset(x, height),
-                        strokeWidth = 1.dp.toPx()
-                    )
+                    drawLine(color = Color.LightGray.copy(alpha = 0.4f), Offset(x, 0f), Offset(x, height), 1.dp.toPx())
                 }
 
-                // Disegno Righe con Icone Send e Inbox
                 for (i in 0 until rowCount) {
                     val y = i * rowHeight + rowHeight / 2f
-                    val lineStart = horizontalPadding
-                    val lineEnd = width - horizontalPadding
+                    drawLine(color = Color.LightGray.copy(alpha = 0.2f), Offset(horizontalPadding, y), Offset(width - horizontalPadding, y), 1.dp.toPx())
                     
-                    drawLine(
-                        color = Color.LightGray.copy(alpha = 0.2f),
-                        start = Offset(lineStart, y), end = Offset(lineEnd, y),
-                        strokeWidth = 1.dp.toPx()
-                    )
-
                     val iconSizePx = 14.dp.toPx()
-                    
-                    // 1. Icona Send (Mittente) all'inizio
-                    translate(left = lineStart - iconSizePx - 4.dp.toPx(), top = y - iconSizePx / 2f) {
-                        with(sendPainter) {
-                            draw(size = Size(iconSizePx, iconSizePx), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Gray.copy(alpha = 0.8f)))
-                        }
+                    translate(left = horizontalPadding - iconSizePx - 4.dp.toPx(), top = y - iconSizePx / 2f) {
+                        with(sendPainter) { draw(Size(iconSizePx, iconSizePx), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Gray.copy(alpha = 0.8f))) }
                     }
-
-                    // 2. Icona Inbox (Destinatario) alla fine
-                    translate(left = lineEnd + 4.dp.toPx(), top = y - iconSizePx / 2f) {
-                        with(inboxPainter) {
-                            draw(size = Size(iconSizePx, iconSizePx), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Gray.copy(alpha = 0.8f)))
-                        }
+                    translate(left = width - horizontalPadding + 4.dp.toPx(), top = y - iconSizePx / 2f) {
+                        with(inboxPainter) { draw(Size(iconSizePx, iconSizePx), colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Gray.copy(alpha = 0.8f))) }
                     }
                 }
 
-                // Messaggi
-                events.forEach { event ->
-                    val pIndex = laneIndexMap[event.speakerRaw.trim().lowercase()] ?: return@forEach
+                // Pass 1: Fill
+                processedEvents.forEach { event ->
+                    val speakerKey = event.speakerRaw.trim().lowercase()
+                    val pIndex = laneIndexMap[speakerKey] ?: return@forEach
                     val progress = (event.timestampEpochMillis - startMillis).toFloat() / timeSpan
                     val x = horizontalPadding + progress * chartWidth
                     val y = pIndex * rowHeight + rowHeight / 2f
                     
                     val score = event.toxScore ?: 0.0
-                    val color = when {
+                    val baseColor = when {
                         score < 0.50 -> colorSottoSoglia
                         score < 0.80 -> colorTossico
                         else -> colorAltamenteTossico
                     }
 
+                    // Recupero densità reale per categoria
+                    val bin = (progress * densityBins).toInt().coerceIn(0, densityBins - 1)
+                    val cat = getSeverityCategory(score)
+                    val density = categoryDensityMap[Triple(speakerKey, bin, cat)] ?: 1
+                    
+                    // Alpha ridotto (minore trasparenza) per rossi e gialli
+                    val alpha = when {
+                        cat > 0 -> 0.95f // Meno trasparente per tossici e critici
+                        density <= 1 -> 0.70f
+                        density <= 4 -> 0.55f
+                        else -> 0.40f
+                    }
+
+                    val baseRadius = if (score >= 0.50) 4.5.dp.toPx() else 3.2.dp.toPx()
+                    val extraRadius = ln1p(density.toDouble()).toFloat() * 1.5.dp.toPx()
+                    val radius = (baseRadius + extraRadius).coerceAtMost(10.dp.toPx())
+
                     drawCircle(
-                        color = color,
-                        radius = if (score >= 0.50) 4.5.dp.toPx() else 3.2.dp.toPx(),
+                        color = baseColor.copy(alpha = alpha),
+                        radius = radius,
                         center = Offset(x.coerceIn(horizontalPadding, width - horizontalPadding), y)
+                    )
+                }
+
+                // Pass 2: Stroke
+                processedEvents.forEach { event ->
+                    val speakerKey = event.speakerRaw.trim().lowercase()
+                    val pIndex = laneIndexMap[speakerKey] ?: return@forEach
+                    val progress = (event.timestampEpochMillis - startMillis).toFloat() / timeSpan
+                    val x = horizontalPadding + progress * chartWidth
+                    val y = pIndex * rowHeight + rowHeight / 2f
+                    
+                    val score = event.toxScore ?: 0.0
+                    val strokeColor = when {
+                        score < 0.50 -> strokeSottoSoglia
+                        score < 0.80 -> strokeTossico
+                        else -> strokeAltamenteTossico
+                    }
+
+                    val bin = (progress * densityBins).toInt().coerceIn(0, densityBins - 1)
+                    val cat = getSeverityCategory(score)
+                    val density = categoryDensityMap[Triple(speakerKey, bin, cat)] ?: 1
+                    
+                    val baseRadius = if (score >= 0.50) 4.5.dp.toPx() else 3.2.dp.toPx()
+                    val extraRadius = ln1p(density.toDouble()).toFloat() * 1.5.dp.toPx()
+                    val radius = (baseRadius + extraRadius).coerceAtMost(10.dp.toPx())
+
+                    drawCircle(
+                        color = strokeColor,
+                        radius = radius,
+                        center = Offset(x.coerceIn(horizontalPadding, width - horizontalPadding), y),
+                        style = Stroke(width = 1.2.dp.toPx())
                     )
                 }
             }
 
-            // COLONNA DESTRA
             Column(
                 modifier = Modifier.width(rightColumnWidth).fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceAround,
@@ -251,7 +317,6 @@ fun EventTimelineChart(
             }
         }
 
-        // X Axis Labels
         val dayFormatter = DateTimeFormatter.ofPattern("EEE", Locale.ITALY).withZone(ZoneId.systemDefault())
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = leftColumnWidth, end = rightColumnWidth, top = 8.dp),
@@ -292,9 +357,14 @@ private fun IconLegendItem(label: String, painter: Painter) {
 }
 
 @Composable
-private fun LegendItem(label: String, color: Color) {
+private fun LegendItem(label: String, color: Color, strokeColor: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).background(color, CircleShape))
+        Box(
+            Modifier
+                .size(8.dp)
+                .background(color, CircleShape)
+                .border(1.dp, strokeColor, CircleShape)
+        )
         Spacer(Modifier.width(4.dp))
         Text(label, fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
     }
