@@ -31,7 +31,10 @@ class ImportFlowTest {
     fun ambiguous_then_select_dmy_then_imported_state_and_saved() {
         val fakeRepo = FakeChatRepository()
         val parser = WhatsAppTxtParser()
-        val vm = ImportViewModel(composeRule.activity, fakeRepo, parser)
+        val vm = ImportViewModel(
+            composeRule.activity, fakeRepo, parser,
+            sharedImportManager = TODO()
+        )
 
         val fileName = "WA_TEST_01_1to1_brackets_24h_seconds_missingdash.txt"
         val lines = listOf(
