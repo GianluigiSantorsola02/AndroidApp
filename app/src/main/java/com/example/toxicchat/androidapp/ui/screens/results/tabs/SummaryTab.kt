@@ -32,6 +32,7 @@ import com.example.toxicchat.androidapp.domain.model.MessageEvent
 import com.example.toxicchat.androidapp.ui.screens.results.components.HeatmapGrid
 import com.example.toxicchat.androidapp.ui.screens.results.components.TrendComboChart
 import com.example.toxicchat.androidapp.ui.viewmodel.AnalysisViewModel
+import com.example.toxicchat.androidapp.util.ReportPrivacyMode
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -50,10 +51,12 @@ private fun getSeverityColor(toxicMessages: Int, score: Double?): Color = when {
 fun SummaryTab(
     result: AnalysisResult,
     onOpenHighlighted: () -> Unit,
-    onExportPdf: () -> Unit,
+    onExportPdf: (ReportPrivacyMode) -> Unit,
     viewModel: AnalysisViewModel = hiltViewModel()
 ) {
     var isDisclaimerExpanded by rememberSaveable { mutableStateOf(false) }
+    var isPdfConfigExpanded by rememberSaveable { mutableStateOf(false) }
+    var selectedPrivacyMode by rememberSaveable { mutableStateOf(ReportPrivacyMode.PRIVATE) }
     
     // UI State for Bottom Sheets
     var selectedCell by remember { mutableStateOf<HeatmapCell?>(null) }
@@ -235,18 +238,86 @@ fun SummaryTab(
 
         Spacer(Modifier.height(48.dp))
 
-        // --- ACTIONS ---
-        Button(
-            onClick = onExportPdf,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = RoundedCornerShape(16.dp)
+        // --- PDF EXPORT SECTION ---
+        Surface(
+            onClick = { isPdfConfigExpanded = !isPdfConfigExpanded },
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
-            Icon(Icons.Default.FileDownload, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Genera Report PDF", fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Configura Report PDF",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = if (isPdfConfigExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                AnimatedVisibility(visible = isPdfConfigExpanded) {
+                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                        Text(
+                            "Scegli la modalità di visualizzazione dei nomi nel report:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            SegmentedButton(
+                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                                onClick = { selectedPrivacyMode = ReportPrivacyMode.PRIVATE },
+                                selected = selectedPrivacyMode == ReportPrivacyMode.PRIVATE
+                            ) {
+                                Text("Privato", fontSize = 12.sp)
+                            }
+                            SegmentedButton(
+                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                                onClick = { selectedPrivacyMode = ReportPrivacyMode.ANONYMOUS },
+                                selected = selectedPrivacyMode == ReportPrivacyMode.ANONYMOUS
+                            ) {
+                                Text("Anonimo", fontSize = 12.sp)
+                            }
+                        }
+                        
+                        val description = if (selectedPrivacyMode == ReportPrivacyMode.PRIVATE) 
+                            "Verranno mostrati i nomi reali dei partecipanti." 
+                            else "I nomi verranno sostituiti con lettere (Partecipante A, B...)."
+                        
+                        Text(
+                            text = description,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+                            color = Color.Gray
+                        )
+                        
+                        Spacer(Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { onExportPdf(selectedPrivacyMode) },
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.PictureAsPdf, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Scarica Report PDF", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
         }
 
+        Spacer(Modifier.height(32.dp))
     }
 
     // Sheet 1: Aggregated Pattern Detail

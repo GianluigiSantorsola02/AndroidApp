@@ -53,7 +53,6 @@ fun ResultsScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showMenu by remember { mutableStateOf(false) }
     var showRangeSheet by remember { mutableStateOf(false) }
-    var showExportDialog by remember { mutableStateOf(false) }
     var showConsentDialog by remember { mutableStateOf(false) }
     var pendingAnalysisAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
@@ -192,7 +191,9 @@ fun ResultsScreen(
                                 0 -> SummaryTab(
                                     result = result,
                                     onOpenHighlighted = onOpenHighlighted,
-                                    onExportPdf = { showExportDialog = true }
+                                    onExportPdf = { mode -> 
+                                        viewModel.exportPdfReport(mode)
+                                    }
                                 )
                                 1 -> DynamicsTab(
                                     result = result,
@@ -252,30 +253,6 @@ fun ResultsScreen(
                 }
             )
         }
-    }
-
-    if (showExportDialog) {
-        AlertDialog(
-            onDismissRequest = { showExportDialog = false },
-            title = { Text("Genera Report PDF") },
-            text = { Text("Il report verrà salvato nella cartella Download del tuo telefono. Scegli la modalità dei nomi:") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.exportPdfReport(ReportPrivacyMode.PRIVATE)
-                    showExportDialog = false
-                }) {
-                    Text("Privato (nomi reali)")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    viewModel.exportPdfReport(ReportPrivacyMode.ANONYMOUS)
-                    showExportDialog = false
-                }) {
-                    Text("Anonimo (A, B, C...)")
-                }
-            }
-        )
     }
 }
 

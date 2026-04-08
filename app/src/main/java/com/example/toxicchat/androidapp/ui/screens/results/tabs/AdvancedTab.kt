@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,13 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,8 +95,9 @@ fun AdvancedTab(
         Spacer(Modifier.height(32.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
-            shape = RoundedCornerShape(16.dp)
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5).copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFFCE93D8))
         ) {
             Column(Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -117,35 +117,93 @@ fun AdvancedTab(
                     lineHeight = 20.sp,
                     color = Color.DarkGray
                 )
+                
                 Spacer(Modifier.height(20.dp))
                 
-                var showConfig by remember { mutableStateOf(false) }
+                var isConfigExpanded by rememberSaveable { mutableStateOf(false) }
+                var selectedGranularity by rememberSaveable { mutableStateOf(PaohvisGranularity.AUTO) }
+
+                Surface(
+                    onClick = { isConfigExpanded = !isConfigExpanded },
+                    color = Color.White.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE1BEE7))
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Tune, null, tint = Color(0xFF7B1FA2), modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Configurazione temporale",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7B1FA2),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = if (isConfigExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = Color(0xFF7B1FA2)
+                            )
+                        }
+                        
+                        AnimatedVisibility(visible = isConfigExpanded) {
+                            Column(Modifier.padding(top = 12.dp)) {
+                                Text(
+                                    "Seleziona la granularità per l'aggregazione dei dati:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.DarkGray
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                
+                                @OptIn(ExperimentalMaterial3Api::class)
+                                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                    PaohvisGranularity.entries.forEachIndexed { index, gran ->
+                                        SegmentedButton(
+                                            shape = SegmentedButtonDefaults.itemShape(index = index, count = PaohvisGranularity.entries.size),
+                                            onClick = { selectedGranularity = gran },
+                                            selected = selectedGranularity == gran
+                                        ) {
+                                            Text(gran.name.lowercase().capitalize(), fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                                
+                                val description = when(selectedGranularity) {
+                                    PaohvisGranularity.AUTO -> "Scelta automatica (Giorno/Settimana)."
+                                    PaohvisGranularity.WEEK -> "Dati aggregati per settimana ISO."
+                                    PaohvisGranularity.DAY -> "Dati aggregati per singolo giorno."
+                                }
+                                Text(
+                                    description,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(top = 8.dp, start = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
                 
                 Button(
-                    onClick = { showConfig = true },
+                    onClick = {
+                        viewModel.startExport(
+                            conversationId,
+                            chatTitle,
+                            result.metadata.rangeStartMillis ?: 0L,
+                            result.metadata.rangeEndMillis ?: System.currentTimeMillis(),
+                            selectedGranularity
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.Download, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Configura Export PAOHVis", fontWeight = FontWeight.Bold)
-                }
-
-                if (showConfig) {
-                    PaohvisConfigDialog(
-                        onDismiss = { showConfig = false },
-                        onExport = { granularity ->
-                            showConfig = false
-                            viewModel.startExport(
-                                conversationId,
-                                chatTitle,
-                                result.metadata.rangeStartMillis ?: 0L,
-                                result.metadata.rangeEndMillis ?: System.currentTimeMillis(),
-                                granularity
-                            )
-                        }
-                    )
+                    Text("Esporta CSV PAOHVis", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -159,54 +217,6 @@ fun AdvancedTab(
             onDismiss = { viewModel.clearExportState() }
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PaohvisConfigDialog(
-    onDismiss: () -> Unit,
-    onExport: (PaohvisGranularity) -> Unit
-) {
-    var selectedGranularity by remember { mutableStateOf(PaohvisGranularity.AUTO) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Configura Export PAOHVis") },
-        text = {
-            Column {
-                Text("Seleziona la granularità temporale per i dati:", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(16.dp))
-                
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    PaohvisGranularity.entries.forEachIndexed { index, gran ->
-                        SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = PaohvisGranularity.entries.size),
-                            onClick = { selectedGranularity = gran },
-                            selected = selectedGranularity == gran
-                        ) {
-                            Text(gran.name.lowercase().capitalize())
-                        }
-                    }
-                }
-                
-                Spacer(Modifier.height(12.dp))
-                val description = when(selectedGranularity) {
-                    PaohvisGranularity.AUTO -> "Sceglie automaticamente tra Giorno e Settimana in base al periodo."
-                    PaohvisGranularity.WEEK -> "Aggrega i dati per settimana (ISO 8601)."
-                    PaohvisGranularity.DAY -> "Aggrega i dati giorno per giorno."
-                }
-                Text(description, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onExport(selectedGranularity) }) {
-                Text("Configura CSV")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla") }
-        }
-    )
 }
 
 @Composable
