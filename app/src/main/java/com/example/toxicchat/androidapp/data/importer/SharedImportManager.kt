@@ -3,6 +3,7 @@ package com.example.toxicchat.androidapp.data.importer
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,15 +22,32 @@ class SharedImportManager @Inject constructor(
     val pendingImport = _pendingImport.asStateFlow()
 
     fun handleSharedFile(uri: Uri) {
-        val fileName = getFileName(uri) ?: "shared_chat.txt"
+        val mimeType = context.contentResolver.getType(uri)
+        var fileName = getFileName(uri)
         
-        if (!fileName.endsWith(".txt", true) && !fileName.endsWith(".zip", true)) {
-            return
+        Log.d("SharedImportManager", "Ricevuto file: URI=$uri, MimeType=$mimeType, Name=$fileName")
+
+        // Rilevamento estensione se mancante
+        if (fileName == null || (!fileName.endsWith(".txt", true) && !fileName.endsWith(".zip", true))) {
+            fileName = when (mimeType) {
+                "application/zip" -> fileName?.let { if (it.contains(".")) it.substringBeforeLast(".") + ".zip" else "$it.zip" } ?: "shared_chat.zip"
+                "text/plain" -> fileName?.let { if (it.contains(".")) it.substringBeforeLast(".") + ".txt" else "$it.txt" } ?: "shared_chat.txt"
+                else -> fileName
+            }
         }
 
-        val cachedFile = copyToCache(uri, fileName)
+        if (fileName != null && !fileName.endsWith(".txt", true) && !fileName.endsWith(".zip", true)) {
+            if (mimeType == "text/plain" || mimeType == "application/octet-stream" || uri.toString().contains("whatsapp", true)) {
+                fileName += ".txt"
+            }
+        }
+
+        if (fileName == null) fileName = "whatsapp_chat.txt"
+
+        val cachedFile = copyToCache(uri, fileName!!)
         if (cachedFile != null) {
-            _pendingImport.value = PendingImport(Uri.fromFile(cachedFile), fileName)
+            Log.d("SharedImportManager", "File salvato in cache: ${cachedFile.absolutePath}")
+            _pendingImport.value = PendingImport(Uri.fromFile(cachedFile), fileName!!)
         }
     }
 

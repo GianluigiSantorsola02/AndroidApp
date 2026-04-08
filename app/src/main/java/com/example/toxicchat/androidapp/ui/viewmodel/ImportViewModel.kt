@@ -44,6 +44,17 @@ class ImportViewModel @Inject constructor(
     // Espone il file pendente per permettere alla UI di visualizzarlo
     val pendingImport = sharedImportManager.pendingImport
 
+    init {
+        // Avvia automaticamente l'importazione se c'è un file condiviso pendente
+        viewModelScope.launch {
+            sharedImportManager.pendingImport.collect { pending ->
+                if (pending != null) {
+                    consumeSharedFile()
+                }
+            }
+        }
+    }
+
     fun consumeSharedFile() {
         val pending = sharedImportManager.consumeImport()
         if (pending != null) {
