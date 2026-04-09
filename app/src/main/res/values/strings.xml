@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">AndroidApp</string>
+    <string name="app_name">VisTox</string>
     <string name="privacy_dialog_title">Analisi della conversazione</string>
     <string name="privacy_dialog_body">Per identificare contenuti tossici, i messaggi verranno elaborati da un servizio di analisi remoto.\n\n• <b>Dati inviati:</b> Testo dei messaggi e orari.\n• <b>Finalità:</b> Sola valutazione della tossicità.\n• <b>Gestione dati:</b> I testi non vengono memorizzati permanentemente né usati per addestrare modelli AI.</string>
     <string name="privacy_dialog_checkbox">Acconsento al trasferimento temporaneo dei dati per l\'analisi</string>
